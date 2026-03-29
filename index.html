@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短影音知識庫 - 內容列表</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .stat { text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: bold; }
+        .stat-label { font-size: 0.9rem; opacity: 0.9; }
+        .category {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        .category-title { font-size: 1.3rem; color: #333; }
+        .category-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .file-list { list-style: none; }
+        .file-item {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .file-item:last-child { border-bottom: none; }
+        .file-item:hover { background: #f9f9f9; }
+        .file-icon { font-size: 1.2rem; }
+        .file-link {
+            color: #333;
+            text-decoration: none;
+            flex: 1;
+        }
+        .file-link:hover { color: #667eea; }
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../" class="back-link">← 返回首頁</a>
+        <h1>📚 短影音內容列表</h1>
+        
+        <div class="stats">
+<div class="stat"><div class="stat-num">142</div><div class="stat-label">總計</div></div><div class="stat"><div class="stat-num">9</div><div class="stat-label">小紅書</div></div><div class="stat"><div class="stat-num">133</div><div class="stat-label">抖音</div></div>
+        </div>
+        
+        <input type="text" class="search-box" placeholder="🔍 搜尋內容..." id="searchBox">
+
+        <div class="category">
+            <div class="category-header">
+                <span class="category-title">📕 小紅書</span>
+                <span class="category-count">9 則</span>
+            </div>
+            <ul class="file-list">
+
+                <li class="file-item" data-title="小紅書內容需手動查看_20260322_211722">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書內容需手動查看_20260322_211722.md" class="file-link">小紅書內容需手動查看_20260322_211722</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_龙虾叕进化了20s自动出视频_20260322_230716_06">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_龙虾叕进化了20s自动出视频_20260322_230716_06.md" class="file-link">小紅書_龙虾叕进化了20s自动出视频_20260322_230716_06</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_马斯克从零到卓越的三件事_20260322_230716_04">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_马斯克从零到卓越的三件事_20260322_230716_04.md" class="file-link">小紅書_马斯克从零到卓越的三件事_20260322_230716_04</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_资深保險人从不讲产品却客户多到手软_20260322_230716_02">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_资深保險人从不讲产品却客户多到手软_20260322_230716_02.md" class="file-link">小紅書_资深保險人从不讲产品却客户多到手软_20260322_230716_02</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_老实人如何一秒拥有顶级气场学会精神篡位_20260322_230716_05">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_老实人如何一秒拥有顶级气场学会精神篡位_20260322_230716_05.md" class="file-link">小紅書_老实人如何一秒拥有顶级气场学会精神篡位_20260322_230716_05</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_斯坦福行为设计导师为什么你刷手机上瘾_20260322_230716_01">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_斯坦福行为设计导师为什么你刷手机上瘾_20260322_230716_01.md" class="file-link">小紅書_斯坦福行为设计导师为什么你刷手机上瘾_20260322_230716_01</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_如何3天内快速了解一个行业_20260322_230716_08">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_如何3天内快速了解一个行业_20260322_230716_08.md" class="file-link">小紅書_如何3天内快速了解一个行业_20260322_230716_08</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_减肥背后的底层逻辑看完你会对自己狠一点_20260322_230716_07">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_减肥背后的底层逻辑看完你会对自己狠一点_20260322_230716_07.md" class="file-link">小紅書_减肥背后的底层逻辑看完你会对自己狠一点_20260322_230716_07</a>
+                </li>
+
+                <li class="file-item" data-title="小紅書_你为什么总紧张因为活成了观众_20260322_230716_03">
+                    <span class="file-icon">📄</span>
+                    <a href="小紅書_你为什么总紧张因为活成了观众_20260322_230716_03.md" class="file-link">小紅書_你为什么总紧张因为活成了观众_20260322_230716_03</a>
+                </li>
+
+            </ul>
+        </div>
+
+        <div class="category">
+            <div class="category-header">
+                <span class="category-title">🎬 抖音</span>
+                <span class="category-count">133 則</span>
+            </div>
+            <ul class="file-list">
+
+                <li class="file-item" data-title="龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260228_182229">
+                    <span class="file-icon">📄</span>
+                    <a href="龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260228_182229.md" class="file-link">龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260228_182229</a>
+                </li>
+
+                <li class="file-item" data-title="龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260227_195042">
+                    <span class="file-icon">📄</span>
+                    <a href="龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260227_195042.md" class="file-link">龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260227_195042</a>
+                </li>
+
+                <li class="file-item" data-title="龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260227_164652">
+                    <span class="file-icon">📄</span>
+                    <a href="龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260227_164652.md" class="file-link">龙生九子为何不同龙妈分别是牛狼凤蛙狮_20260227_164652</a>
+                </li>
+
+                <li class="file-item" data-title="黄仁勋5层蛋糕理论分析中美ai竞争格局_20260310_064021">
+                    <span class="file-icon">📄</span>
+                    <a href="黄仁勋5层蛋糕理论分析中美AI竞争格局_20260310_064021.md" class="file-link">黄仁勋5层蛋糕理论分析中美AI竞争格局_20260310_064021</a>
+                </li>
+
+                <li class="file-item" data-title="黄仁勋5层蛋糕理论分析中美ai竞争格局_20260310_064010">
+                    <span class="file-icon">📄</span>
+                    <a href="黄仁勋5层蛋糕理论分析中美AI竞争格局_20260310_064010.md" class="file-link">黄仁勋5层蛋糕理论分析中美AI竞争格局_20260310_064010</a>
+                </li>
+
+                <li class="file-item" data-title="马斯克最新访谈深夜剧透奇点已来ai自我进化人类将沦为微小少数_20260314_071421">
+                    <span class="file-icon">📄</span>
+                    <a href="马斯克最新访谈深夜剧透奇点已来AI自我进化人类将沦为微小少数_20260314_071421.md" class="file-link">马斯克最新访谈深夜剧透奇点已来AI自我进化人类将沦为微小少数_20260314_071421</a>
+                </li>
+
+                <li class="file-item" data-title="马斯克最新访谈深夜剧透奇点已来ai自我进化人类将沦为微小少数_20260314_071409">
+                    <span class="file-icon">📄</span>
+                    <a href="马斯克最新访谈深夜剧透奇点已来AI自我进化人类将沦为微小少数_20260314_071409.md" class="file-link">马斯克最新访谈深夜剧透奇点已来AI自我进化人类将沦为微小少数_20260314_071409</a>
+                </li>
+
+                <li class="file-item" data-title="逆天丐版mac mini十倍提速多开爽玩openclaw 昨_20260310_185426">
+                    <span class="file-icon">📄</span>
+                    <a href="逆天丐版Mac Mini十倍提速多开爽玩Openclaw 昨_20260310_185426.md" class="file-link">逆天丐版Mac Mini十倍提速多开爽玩Openclaw 昨_20260310_185426</a>
+                </li>
+
+                <li class="file-item" data-title="逆天丐版mac mini十倍提速多开爽玩openclaw 昨_20260310_185418">
+                    <span class="file-icon">📄</span>
+                    <a href="逆天丐版Mac Mini十倍提速多开爽玩Openclaw 昨_20260310_185418.md" class="file-link">逆天丐版Mac Mini十倍提速多开爽玩Openclaw 昨_20260310_185418</a>
+                </li>
+
+                <li class="file-item" data-title="这是二战后最大的灭国苏联解体冷战的结束美国成唯一超级大国_20260228_180004">
+                    <span class="file-icon">📄</span>
+                    <a href="这是二战后最大的灭国苏联解体冷战的结束美国成唯一超级大国_20260228_180004.md" class="file-link">这是二战后最大的灭国苏联解体冷战的结束美国成唯一超级大国_20260228_180004</a>
+                </li>
+
+                <li class="file-item" data-title="跳出情绪陷阱非理性繁荣股市泡沫的底层真相_20260312_063546">
+                    <span class="file-icon">📄</span>
+                    <a href="跳出情绪陷阱非理性繁荣股市泡沫的底层真相_20260312_063546.md" class="file-link">跳出情绪陷阱非理性繁荣股市泡沫的底层真相_20260312_063546</a>
+                </li>
+
+                <li class="file-item" data-title="跳出情绪陷阱非理性繁荣股市泡沫的底层真相_20260312_063538">
+                    <span class="file-icon">📄</span>
+                    <a href="跳出情绪陷阱非理性繁荣股市泡沫的底层真相_20260312_063538.md" class="file-link">跳出情绪陷阱非理性繁荣股市泡沫的底层真相_20260312_063538</a>
+                </li>
+
+                <li class="file-item" data-title="资本论最狠一章下原来失业不是系统漏洞而是系统功能 这个世界光_20260301_161423">
+                    <span class="file-icon">📄</span>
+                    <a href="资本论最狠一章下原来失业不是系统漏洞而是系统功能 这个世界光_20260301_161423.md" class="file-link">资本论最狠一章下原来失业不是系统漏洞而是系统功能 这个世界光_20260301_161423</a>
+                </li>
+
+                <li class="file-item" data-title="资本论最狠一章下原来失业不是系统漏洞而是系统功能 这个世界光_20260301_161407">
+                    <span class="file-icon">📄</span>
+                    <a href="资本论最狠一章下原来失业不是系统漏洞而是系统功能 这个世界光_20260301_161407.md" class="file-link">资本论最狠一章下原来失业不是系统漏洞而是系统功能 这个世界光_20260301_161407</a>
+                </li>
+
+                <li class="file-item" data-title="资本论上你以为的公平交易是规则内的公平 规则本身从来不公平_20260228_181914">
+                    <span class="file-icon">📄</span>
+                    <a href="资本论上你以为的公平交易是规则内的公平 规则本身从来不公平_20260228_181914.md" class="file-link">资本论上你以为的公平交易是规则内的公平 规则本身从来不公平_20260228_181914</a>
+                </li>
+
+                <li class="file-item" data-title="资本论上你以为的公平交易是规则内的公平 规则本身从来不公平_20260228_113201">
+                    <span class="file-icon">📄</span>
+                    <a href="资本论上你以为的公平交易是规则内的公平 规则本身从来不公平_20260228_113201.md" class="file-link">资本论上你以为的公平交易是规则内的公平 规则本身从来不公平_20260228_113201</a>
+                </li>
+
+                <li class="file-item" data-title="让你的ai秒变技能架构师 你有没有遇到过这种情况接到一个任务_20260228_231511">
+                    <span class="file-icon">📄</span>
+                    <a href="让你的AI秒变技能架构师 你有没有遇到过这种情况接到一个任务_20260228_231511.md" class="file-link">让你的AI秒变技能架构师 你有没有遇到过这种情况接到一个任务_20260228_231511</a>
+                </li>
+
+                <li class="file-item" data-title="让openclaw一站式访问整个互联网 让openclaw一_20260228_183621">
+                    <span class="file-icon">📄</span>
+                    <a href="让OpenClaw一站式访问整个互联网 让OpenClaw一_20260228_183621.md" class="file-link">让OpenClaw一站式访问整个互联网 让OpenClaw一_20260228_183621</a>
+                </li>
+
+                <li class="file-item" data-title="让openclaw一站式访问整个互联网 让openclaw一_20260227_213450">
+                    <span class="file-icon">📄</span>
+                    <a href="让OpenClaw一站式访问整个互联网 让OpenClaw一_20260227_213450.md" class="file-link">让OpenClaw一站式访问整个互联网 让OpenClaw一_20260227_213450</a>
+                </li>
+
+                <li class="file-item" data-title="解锁万物原理_20260314_180758">
+                    <span class="file-icon">📄</span>
+                    <a href="解锁万物原理_20260314_180758.md" class="file-link">解锁万物原理_20260314_180758</a>
+                </li>
+
+                <li class="file-item" data-title="解锁万物原理_20260314_180744">
+                    <span class="file-icon">📄</span>
+                    <a href="解锁万物原理_20260314_180744.md" class="file-link">解锁万物原理_20260314_180744</a>
+                </li>
+
+                <li class="file-item" data-title="被机器干掉的高薪中产卢德运动与旧产能的强制平仓_20260319_221525">
+                    <span class="file-icon">📄</span>
+                    <a href="被机器干掉的高薪中产卢德运动与旧产能的强制平仓_20260319_221525.md" class="file-link">被机器干掉的高薪中产卢德运动与旧产能的强制平仓_20260319_221525</a>
+                </li>
+
+                <li class="file-item" data-title="血泪总结我用了1个月openclaw总结了这6条核心配置原则_20260303_174931">
+                    <span class="file-icon">📄</span>
+                    <a href="血泪总结我用了1个月OpenClaw总结了这6条核心配置原则_20260303_174931.md" class="file-link">血泪总结我用了1个月OpenClaw总结了这6条核心配置原则_20260303_174931</a>
+                </li>
+
+                <li class="file-item" data-title="编程救星不让ai瞎改代码可视化代码函数依赖关系调用链等_20260228_182916">
+                    <span class="file-icon">📄</span>
+                    <a href="编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260228_182916.md" class="file-link">编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260228_182916</a>
+                </li>
+
+                <li class="file-item" data-title="编程救星不让ai瞎改代码可视化代码函数依赖关系调用链等_20260227_175331">
+                    <span class="file-icon">📄</span>
+                    <a href="编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260227_175331.md" class="file-link">编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260227_175331</a>
+                </li>
+
+                <li class="file-item" data-title="编程救星不让ai瞎改代码可视化代码函数依赖关系调用链等_20260227_164216">
+                    <span class="file-icon">📄</span>
+                    <a href="编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260227_164216.md" class="file-link">编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260227_164216</a>
+                </li>
+
+                <li class="file-item" data-title="编程救星不让ai瞎改代码可视化代码函数依赖关系调用链等_20260227_164102">
+                    <span class="file-icon">📄</span>
+                    <a href="编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260227_164102.md" class="file-link">编程救星不让AI瞎改代码可视化代码函数依赖关系调用链等_20260227_164102</a>
+                </li>
+
+                <li class="file-item" data-title="绝壁求生幼小生命在极端环境下的生存挣扎_20260228_173113">
+                    <span class="file-icon">📄</span>
+                    <a href="绝壁求生幼小生命在极端环境下的生存挣扎_20260228_173113.md" class="file-link">绝壁求生幼小生命在极端环境下的生存挣扎_20260228_173113</a>
+                </li>
+
+                <li class="file-item" data-title="绝壁求生幼小生命在极端环境下的生存挣扎_20260228_144735">
+                    <span class="file-icon">📄</span>
+                    <a href="绝壁求生幼小生命在极端环境下的生存挣扎_20260228_144735.md" class="file-link">绝壁求生幼小生命在极端环境下的生存挣扎_20260228_144735</a>
+                </li>
+
+                <li class="file-item" data-title="绝壁求生幼小生命在极端环境下的生存挣扎_20260228_144729">
+                    <span class="file-icon">📄</span>
+                    <a href="绝壁求生幼小生命在极端环境下的生存挣扎_20260228_144729.md" class="file-link">绝壁求生幼小生命在极端环境下的生存挣扎_20260228_144729</a>
+                </li>
+
+                <li class="file-item" data-title="纳瓦尔最新播客ai焦虑的解药只有两个字_20260228_182815">
+                    <span class="file-icon">📄</span>
+                    <a href="纳瓦尔最新播客AI焦虑的解药只有两个字_20260228_182815.md" class="file-link">纳瓦尔最新播客AI焦虑的解药只有两个字_20260228_182815</a>
+                </li>
+
+                <li class="file-item" data-title="纳瓦尔最新播客ai焦虑的解药只有两个字_20260228_123254">
+                    <span class="file-icon">📄</span>
+                    <a href="纳瓦尔最新播客AI焦虑的解药只有两个字_20260228_123254.md" class="file-link">纳瓦尔最新播客AI焦虑的解药只有两个字_20260228_123254</a>
+                </li>
+
+                <li class="file-item" data-title="硅谷又有公司财源裁员广进裁员40市值大涨25_20260302_213454">
+                    <span class="file-icon">📄</span>
+                    <a href="硅谷又有公司财源裁员广进裁员40市值大涨25_20260302_213454.md" class="file-link">硅谷又有公司财源裁员广进裁员40市值大涨25_20260302_213454</a>
+                </li>
+
+                <li class="file-item" data-title="硅谷又有公司财源裁员广进裁员40市值大涨25_20260302_213447">
+                    <span class="file-icon">📄</span>
+                    <a href="硅谷又有公司财源裁员广进裁员40市值大涨25_20260302_213447.md" class="file-link">硅谷又有公司财源裁员广进裁员40市值大涨25_20260302_213447</a>
+                </li>
+
+                <li class="file-item" data-title="睡够8小时还是累肚子上的肉怎么都减不掉莫名焦虑烦躁这不是你矫_20260306_193842">
+                    <span class="file-icon">📄</span>
+                    <a href="睡够8小时还是累肚子上的肉怎么都减不掉莫名焦虑烦躁这不是你矫_20260306_193842.md" class="file-link">睡够8小时还是累肚子上的肉怎么都减不掉莫名焦虑烦躁这不是你矫_20260306_193842</a>
+                </li>
+
+                <li class="file-item" data-title="睡够8小时还是累肚子上的肉怎么都减不掉莫名焦虑烦躁这不是你矫_20260306_193830">
+                    <span class="file-icon">📄</span>
+                    <a href="睡够8小时还是累肚子上的肉怎么都减不掉莫名焦虑烦躁这不是你矫_20260306_193830.md" class="file-link">睡够8小时还是累肚子上的肉怎么都减不掉莫名焦虑烦躁这不是你矫_20260306_193830</a>
+                </li>
+
+                <li class="file-item" data-title="深度拆解马斯克万亿帝国闭环 从支付ai到自研芯片的终局之战 _20260316_221806">
+                    <span class="file-icon">📄</span>
+                    <a href="深度拆解马斯克万亿帝国闭环 从支付AI到自研芯片的终局之战 _20260316_221806.md" class="file-link">深度拆解马斯克万亿帝国闭环 从支付AI到自研芯片的终局之战 _20260316_221806</a>
+                </li>
+
+                <li class="file-item" data-title="深度拆解马斯克万亿帝国闭环 从支付ai到自研芯片的终局之战 _20260316_221755">
+                    <span class="file-icon">📄</span>
+                    <a href="深度拆解马斯克万亿帝国闭环 从支付AI到自研芯片的终局之战 _20260316_221755.md" class="file-link">深度拆解马斯克万亿帝国闭环 从支付AI到自研芯片的终局之战 _20260316_221755</a>
+                </li>
+
+                <li class="file-item" data-title="流水摆件独立站案例分析_20260305_064003">
+                    <span class="file-icon">📄</span>
+                    <a href="流水摆件独立站案例分析_20260305_064003.md" class="file-link">流水摆件独立站案例分析_20260305_064003</a>
+                </li>
+
+                <li class="file-item" data-title="流水摆件独立站案例分析_20260305_063954">
+                    <span class="file-icon">📄</span>
+                    <a href="流水摆件独立站案例分析_20260305_063954.md" class="file-link">流水摆件独立站案例分析_20260305_063954</a>
+                </li>
+
+                <li class="file-item" data-title="每天一本书空腹力深度解读 你以为饿肚子是坏事错了石原结实告诉_20260310_190851">
+                    <span class="file-icon">📄</span>
+                    <a href="每天一本书空腹力深度解读 你以为饿肚子是坏事错了石原结实告诉_20260310_190851.md" class="file-link">每天一本书空腹力深度解读 你以为饿肚子是坏事错了石原结实告诉_20260310_190851</a>
+                </li>
+
+                <li class="file-item" data-title="每天一本书空腹力深度解读 你以为饿肚子是坏事错了石原结实告诉_20260310_190847">
+                    <span class="file-icon">📄</span>
+                    <a href="每天一本书空腹力深度解读 你以为饿肚子是坏事错了石原结实告诉_20260310_190847.md" class="file-link">每天一本书空腹力深度解读 你以为饿肚子是坏事错了石原结实告诉_20260310_190847</a>
+                </li>
+
+                <li class="file-item" data-title="未来所有的生意 都不再属于卖货的人 n未来的生意属于构建系统_20260303_160350">
+                    <span class="file-icon">📄</span>
+                    <a href="未来所有的生意 都不再属于卖货的人 n未来的生意属于构建系统_20260303_160350.md" class="file-link">未来所有的生意 都不再属于卖货的人 n未来的生意属于构建系统_20260303_160350</a>
+                </li>
+
+                <li class="file-item" data-title="有钱人最大的秘密不是搞钱而是_20260307_070331">
+                    <span class="file-icon">📄</span>
+                    <a href="有钱人最大的秘密不是搞钱而是_20260307_070331.md" class="file-link">有钱人最大的秘密不是搞钱而是_20260307_070331</a>
+                </li>
+
+                <li class="file-item" data-title="有钱人最大的秘密不是搞钱而是_20260307_070323">
+                    <span class="file-icon">📄</span>
+                    <a href="有钱人最大的秘密不是搞钱而是_20260307_070323.md" class="file-link">有钱人最大的秘密不是搞钱而是_20260307_070323</a>
+                </li>
+
+                <li class="file-item" data-title="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_133050">
+                    <span class="file-icon">📄</span>
+                    <a href="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_133050.md" class="file-link">无脑减脂法闭眼随便吃的减脂餐是什么_20260320_133050</a>
+                </li>
+
+                <li class="file-item" data-title="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_133042">
+                    <span class="file-icon">📄</span>
+                    <a href="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_133042.md" class="file-link">无脑减脂法闭眼随便吃的减脂餐是什么_20260320_133042</a>
+                </li>
+
+                <li class="file-item" data-title="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_132925">
+                    <span class="file-icon">📄</span>
+                    <a href="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_132925.md" class="file-link">无脑减脂法闭眼随便吃的减脂餐是什么_20260320_132925</a>
+                </li>
+
+                <li class="file-item" data-title="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_132917">
+                    <span class="file-icon">📄</span>
+                    <a href="无脑减脂法闭眼随便吃的减脂餐是什么_20260320_132917.md" class="file-link">无脑减脂法闭眼随便吃的减脂餐是什么_20260320_132917</a>
+                </li>
+
+                <li class="file-item" data-title="文科生72小时杀入github全球榜_20260303_200146">
+                    <span class="file-icon">📄</span>
+                    <a href="文科生72小时杀入GitHub全球榜_20260303_200146.md" class="file-link">文科生72小时杀入GitHub全球榜_20260303_200146</a>
+                </li>
+<li class="file-item">... 還有 83 則</li>
+            </ul>
+        </div>
+
+        <script>
+            document.getElementById('searchBox').addEventListener('input', function(e) {
+                const query = e.target.value.toLowerCase();
+                document.querySelectorAll('.file-item').forEach(item => {
+                    const title = item.getAttribute('data-title');
+                    item.style.display = title.includes(query) ? 'flex' : 'none';
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>
