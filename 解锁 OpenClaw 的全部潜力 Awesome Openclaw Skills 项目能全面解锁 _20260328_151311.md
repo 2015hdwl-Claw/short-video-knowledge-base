@@ -20,3 +20,9 @@
 ---
 
 _自動生成 by OpenClaw 全自動處理器 v3.0_
+
+## 📌 核心重點
+
+1. 主題：解锁 OpenClaw 的全部潜力 Awesome Openclaw Skills 项目能全面解锁 OpenClaw 的全部潜力，项目在 GitHub 上已斩获 40k Star。
+2. 詳細內容需觀看影片
+
