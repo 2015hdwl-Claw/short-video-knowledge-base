@@ -20,5 +20,25 @@
       "情緒最高點時主動離場：主動打斷讓她對下次充滿期待",
       "展現高價值框架：表現生活不只圍繞她，是有框架的男人"
     ]
+  },
+  {
+    "id": "douyin-7621994439619863161",
+    "title": "Claude Code 隱藏玩法？原生 Teams vs OMC vs Ruflo 硬核解析！",
+    "author": "AI工具獵手",
+    "platform": "抖音",
+    "url": "https://v.douyin.com/FVxMzxo6mmE/",
+    "file": "douyin-7621994439619863161-Claude-Code隱藏玩法原生Teams-vs-OMC-vs-Ruflo硬核解析.md",
+    "tags": [
+      "科技",
+      "AI"
+    ],
+    "category": "科技",
+    "duration": "1:29",
+    "date": "2026-03-30",
+    "core_points": [
+      "原生 Agent Teams 只是聊天室，缺乏工作流容易跑偏",
+      "OMC 是低學習成本的 Claude Code SOP 管線外掛，32 角色接力 + 多模型並行",
+      "Ruflo 是企業級蜂群編排，Sub-Agent + 60 節點 + 貝葉防禦 + AST 本地解析"
+    ]
   }
 ]
