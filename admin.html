@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短影音知識庫 Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 2rem; border-bottom: 1px solid #475569; }
+        .header h1 { font-size: 1.5rem; color: #f8fafc; }
+        .header .stats { color: #94a3b8; margin-top: 0.5rem; font-size: 0.9rem; }
+        .controls { padding: 1rem 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+        .controls input, .controls select { background: #1e293b; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; }
+        .controls input:focus, .controls select:focus { outline: none; border-color: #3b82f6; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem; padding: 1rem 2rem 3rem; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; transition: all 0.2s; cursor: pointer; }
+        .card:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.15); }
+        .card .title { font-size: 1rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.5rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card .meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .card .badge { font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 9999px; }
+        .badge-source { background: #1e3a5f; color: #60a5fa; }
+        .badge-cat { background: #3b1f4a; color: #c084fc; }
+        .badge-date { background: #1f3329; color: #4ade80; }
+        .card .points { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+        .card .points li { margin-bottom: 0.25rem; }
+        .card .note { margin-top: 0.5rem; font-size: 0.85rem; color: #fbbf24; font-style: italic; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #1e293b; border: 1px solid #475569; border-radius: 1rem; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 2rem; }
+        .modal-content h2 { margin-bottom: 1rem; }
+        .modal-content .close { float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
+        .modal-content .close:hover { color: #f8fafc; }
+        .empty { text-align: center; padding: 3rem; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 短影音知識庫</h1>
+        <div class="stats" id="stats"></div>
+    </div>
+    <div class="controls">
+        <input type="text" id="search" placeholder="🔍 搜尋標題、作者、內容..." style="flex:1;min-width:200px">
+        <select id="catFilter"><option value="">所有分類</option></select>
+        <select id="sortOrder"><option value="date-desc">最新優先</option><option value="date-asc">最舊優先</option><option value="title">標題排序</option></select>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('modal').classList.remove('active')">✕</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    <script>
+const DATA = [{"file": "douyin-7621523941860920586-學會調情讓她對你瘋狂上頭.md", "title": "學會調情，讓她對你瘋狂上頭", "date": "2026-03-30", "source": "抖音 - 魅魔樂園", "url": "https://v.douyin.com/tioXL9PkVDw/", "url_status": "ok", "tags": ["心理學", "個人成長"], "category": "心理學", "core_points": "1. 調情的精髓是推拉：讓女生覺得你有意思又好像沒有，不確定性是核心驅動力\n2. 善用比喻式角色代入：用小貓比喻調情，比直接誇獎高級，不觸發防禦機制\n3. 製造情緒過山車：讓女生情緒忽上忽下，波動越大越忘不掉\n4. 情緒最高點時主動離場：主動打斷讓她對下次充滿期待\n5. 展現高價值框架：表現生活不只圍繞她，是有框架的男人", "note": "", "priority": "normal"}, {"file": "douyin-7621994439619863161-Claude-Code隱藏玩法原生Teams-vs-OMC-vs-Ruflo硬核解析.md", "title": "Claude Code 隱藏玩法？原生 Teams vs OMC vs Ruflo 硬核解析！", "date": "2026-03-30", "source": "抖音 - AI工具獵手", "url": "https://v.douyin.com/FVxMzxo6mmE/", "url_status": "ok", "tags": ["科技", "AI"], "category": "科技", "core_points": "1. 原生 Agent Teams 只是聊天室，缺乏工作流容易跑偏\n2. OMC 是低學習成本的 Claude Code SOP 管線外掛，32 角色接力 + 多模型並行\n3. Ruflo 是企業級蜂群編排，Sub-Agent + 60 節點 + 貝葉防禦 + AST 本地解析", "note": "", "priority": "normal"}, {"file": "douyin-7617312571355388389-小而怪的生意会诞生一批富人-这个才是未来几年容易跑出来的一条路--财富思维--搞钱逻辑---商业认知.md", "title": "小而怪的生意会诞生一批富人，这个才是未来几年容易跑出来的一条路。#财富思维 #搞钱逻辑  #商业认知 #干货分享 #小众赛道", "date": "2026-03-30", "source": "抖音 - 变强起点", "url": "https://v.douyin.com/CJ6kw6IxVEM/", "url_status": "ok", "tags": ["財經", "個人成長"], "category": "財經", "core_points": "1. 小而怪的生意是未來趨勢，大眾市場飽和\n2. 尋找別人不願意做的細分市場建立壁壘\n3. 專注利潤率和不可替代性，不追求規模", "note": "", "priority": "normal"}, {"file": "douyin-7623001464364862758-Claude-Code-学习指南项目-Claude-Code--保姆级--学习指南-Github-爆.md", "title": "Claude Code 学习指南项目 Claude Code “保姆级” 学习指南，Github 爆火项目，带你从小白到精通", "date": "2026-03-31", "source": "抖音 - 小北AI开源", "url": "https://v.douyin.com/6bE9EkO25rE/", "url_status": "ok", "tags": ["科技", "AI"], "category": "科技", "core_points": "1. Claude Code 開源學習指南項目，系統性學習 AI 編程\n2. 適合 AI 編程入門者的完整學習路線", "note": "", "priority": "normal"}, {"file": "douyin-7614755802670255414-为什么说不是你在驯服猫-而是猫占据主导权---科普--科普一下--猫--猫咪--青年创作者成长计划.md", "title": "为什么说不是你在驯服猫，而是猫占据主导权？ #科普 #科普一下 #猫 #猫咪 #青年创作者成长计划", "date": "2026-03-31", "source": "抖音 - 探秘生物圈", "url": "https://v.douyin.com/iH1ZLGgeZlU/", "url_status": "ok", "tags": ["教育", "科學"], "category": "教育", "core_points": "1. 不是你在馴服貓，是貓主動選擇與人類共存\n2. 貓的自我馴化過程與狗截然不同\n3. 理解貓的行為本質，用平等方式相處", "note": "", "priority": "normal"}, {"file": "douyin-7622982831374945574-从失败到领悟-聊下一人公司-OPC-的复利循环-过去的一年都在不断踩坑.md", "title": "从失败到领悟，聊下一人公司(OPC)的复利循环 过去的一年都在不断踩坑", "date": "2026-04-01", "source": "抖音 - 小天fotos", "url": "", "url_status": "", "tags": ["財經", "個人成長"], "category": "財經", "core_points": "", "note": "", "priority": "normal"}, {"file": "douyin-7623351917472951922-烧光几十亿-Sora为何被突然关停--近期OpenAI突然宣布关停曾震惊世界的AI视频工具Sora.md", "title": "烧光几十亿，Sora为何被突然关停？ 近期OpenAI突然宣布关停曾震惊世界的AI视频工具Sora。这一决定并非因为技术落后，而是源于残酷的商业现实与行业战略的觉醒。", "date": "2026-04-01", "source": "抖音 - 阿畅聊AI", "url": "", "url_status": "", "tags": ["科技", "AI"], "category": "科技", "core_points": "", "note": "", "priority": "normal"}];
+const categories = [...new Set(DATA.map(d => d.category))].sort();
+const catFilter = document.getElementById('catFilter');
+categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
+document.getElementById('stats').textContent = `共 ${DATA.length} 筆知識卡片`;
+
+function render() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const cat = catFilter.value;
+    const sort = document.getElementById('sortOrder').value;
+    let filtered = DATA.filter(d => {
+        if (cat && d.category !== cat) return false;
+        if (q && !d.title.toLowerCase().includes(q) && !d.source.toLowerCase().includes(q) && !(d.core_points||'').toLowerCase().includes(q)) return false;
+        return true;
+    });
+    if (sort === 'date-desc') filtered.sort((a,b) => b.date.localeCompare(a.date));
+    else if (sort === 'date-asc') filtered.sort((a,b) => a.date.localeCompare(b.date));
+    else if (sort === 'title') filtered.sort((a,b) => a.title.localeCompare(b.title));
+
+    const grid = document.getElementById('grid');
+    if (!filtered.length) { grid.innerHTML = '<div class="empty">沒有找到匹配的卡片</div>'; return; }
+    grid.innerHTML = filtered.map((d, i) => {
+        const points = (d.core_points || '').split('\n').filter(p => p.trim()).slice(0, 3);
+        const ptsHtml = points.length ? '<ul class="points">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : '';
+        const noteHtml = d.note ? '<div class="note">📝 ' + d.note + '</div>' : '';
+        return `<div class="card" onclick="openModal(${DATA.indexOf(d)})">
+            <div class="title">${d.title}</div>
+            <div class="meta">
+                <span class="badge badge-source">${d.source}</span>
+                <span class="badge badge-cat">${d.category}</span>
+                <span class="badge badge-date">${d.date}</span>
+            </div>
+            ${ptsHtml}${noteHtml}
+        </div>`;
+    }).join('');
+}
+
+function openModal(i) {
+    const d = DATA[i];
+    const points = (d.core_points || '').split('\n').filter(p => p.trim());
+    document.getElementById('modalBody').innerHTML = `
+        <h2>${d.title}</h2>
+        <div class="meta" style="margin-bottom:1rem">
+            <span class="badge badge-source">${d.source}</span>
+            <span class="badge badge-cat">${d.category}</span>
+            <span class="badge badge-date">${d.date}</span>
+        </div>
+        ${d.url ? '<p style="margin-bottom:1rem"><a href="' + d.url + '" target="_blank" style="color:#60a5fa">🔗 原始連結</a></p>' : ''}
+        ${points.length ? '<h3 style="margin:1rem 0 0.5rem">📌 核心重點</h3><ul class="points" style="list-style:decimal;padding-left:1.5rem">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : ''}
+        ${d.note ? '<p style="margin-top:1rem;color:#fbbf24">📝 ' + d.note + '</p>' : ''}
+    `;
+    document.getElementById('modal').classList.add('active');
+}
+document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('active'); });
+document.getElementById('search').addEventListener('input', render);
+catFilter.addEventListener('change', render);
+document.getElementById('sortOrder').addEventListener('change', render);
+render();
+    </script>
+</body>
+</html>
