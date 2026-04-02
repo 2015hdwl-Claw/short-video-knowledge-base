@@ -52,7 +52,7 @@
         </div>
     </div>
     <script>
-let DATA = []; fetch("short-videos.json").then(r=>r.json()).then(d=>{DATA=d;renderCards();});
+let DATA = []; fetch("short-videos.json").then(r=>r.json()).then(d=>{DATA=d;render();});
 const categories = [...new Set(DATA.map(d => d.category))].sort();
 const catFilter = document.getElementById('catFilter');
 categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
