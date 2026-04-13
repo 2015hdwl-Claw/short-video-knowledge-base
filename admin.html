@@ -807,7 +807,7 @@ async function loadConceptPage(file) {
     detail.style.display = 'block';
     detail.innerHTML = '<p style="color:var(--tm)">載入中...</p>';
     try {
-        const res = await fetch(file);
+        const res = await fetch(encodeURIComponent(file).replace(/%2F/g, '/'));
         const md = await res.text();
         let html = '<button onclick="document.getElementById(\'kwikiDetail\').style.display=\'none\';document.getElementById(\'kwikiContent\').style.display=\'block\';" style="margin-bottom:1rem;padding:.4rem 1rem;border:1px solid var(--bd);background:var(--bg2);color:var(--tm);border-radius:.375rem;cursor:pointer;">← 返回索引</button>';
         html += renderMd(md);
