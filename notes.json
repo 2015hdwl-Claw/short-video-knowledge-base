@@ -1,23 +1,24 @@
 [
   {
-    "file": "raw/notes/2026-04-13_135504.md",
+    "file": "raw/notes/2026-04-13_164049.md",
     "date": "2026-04-13",
-    "time": "13:55",
+    "time": "16:40",
     "source": "telegram",
-    "tags": [],
+    "tags": [
+      "社交红利",
+      "流量",
+      "信任",
+      "抖音"
+    ],
     "content": "",
     "reminder": null
   },
   {
     "file": "raw/notes/2026-04-13_134920.md",
-    "date": "2026-04-13",
-    "time": "13:49",
-    "source": "telegram",
-    "tags": [
-      "AI",
-      "播客",
-      "被動收入"
-    ],
+    "date": "",
+    "time": "",
+    "source": "",
+    "tags": [],
     "content": "",
     "reminder": null
   }
