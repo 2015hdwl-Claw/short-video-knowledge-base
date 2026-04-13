@@ -4,9 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短影音知識庫 Admin</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
+function setTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.style.borderColor='transparent');
+    event.target.style.borderColor=t?'var(--t1)':'var(--t1)';
+    try{localStorage.setItem('kb_theme',t)}catch(e){}
+}
+function loadTheme(){try{const t=localStorage.getItem('kb_theme');if(t){document.documentElement.setAttribute('data-theme',t)}}catch(e){}}
+function toggleSidebar(){document.getElementById('wikiSidebar').classList.toggle('open')}
+loadTheme();
+</script>
+    <script src="https://d3js.org/d3.v7.min.js">
 function setTheme(t){
     document.documentElement.setAttribute('data-theme',t);
     document.querySelectorAll('.theme-dot').forEach(d=>d.style.borderColor='transparent');
@@ -438,7 +447,7 @@ function loadWikiIndexLegacy() { wikiLoaded = true; }
 function showWikiView(mode) {} // no-op, handled by showKwikiView
 
 function loadWikiPage(name) {
-    loadConceptPage(conceptFile(name));
+    loadConceptPage('wiki/concepts/' + name + '.md');
     switchTab('kwiki');
 }
 
@@ -646,7 +655,15 @@ async function deleteItem() {
 }
 
 document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
-
+    
+function setTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.style.borderColor='transparent');
+    event.target.style.borderColor=t?'var(--t1)':'var(--t1)';
+    try{localStorage.setItem('kb_theme',t)}catch(e){}
+}
+function loadTheme(){try{const t=localStorage.getItem('kb_theme');if(t){document.documentElement.setAttribute('data-theme',t)}}catch(e){}}
+function toggleSidebar(){document.getElementById('wikiSidebar').classList.toggle('open')}
 loadTheme();
 
 // === KNOWLEDGE WIKI (unified) ===
@@ -768,12 +785,9 @@ function renderKwikiGraph() {
     const node = svg.append('g').selectAll('g').data(nodes).enter().append('g').style('cursor','pointer').call(d3.drag().on('start',(e,d)=>{if(!e.active)simulation.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y}).on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y}).on('end',(e,d)=>{if(!e.active)simulation.alphaTarget(0);d.fx=null;d.fy=null}));
     node.append('circle').attr('r',d=>d.size).attr('fill',d=>colorMap[d.type]).attr('opacity',.8);
     node.append('text').text(d=>d.id.substring(0,6)).attr('text-anchor','middle').attr('dy',d=>d.size+14).attr('fill','#94a3b8').attr('font-size','11px');
-    node.on('click',(e,d)=>{if(d.type==='concept'){loadConceptPage(conceptFile(d.id));showKwikiView('index');}});
+    node.on('click',(e,d)=>{if(d.type==='concept'){const file='wiki/concepts/'+d.id+'.md';loadConceptPage(file);showKwikiView('index');}});
     simulation.on('tick',()=>node.attr('transform',d=>`translate(${d.x},${d.y})`));
 }
-
-const conceptFileMap = {'AI工具與編程':'ai-coding-tools','AI趨勢與產業':'ai-trends','財經投資理財':'finance-investing','心理學與認知':'psychology','健康養生':'health','創業與商業模式':'entrepreneurship','學習與知識管理':'learning','科學歷史與人文':'science-history'};
-function conceptFile(name){ return 'wiki/concepts/' + (conceptFileMap[name] || name) + '.md'; }
 
 function renderMd(text) {
     let html = '';
@@ -784,22 +798,20 @@ function renderMd(text) {
         else if (line.startsWith('- **')) {
             const m = line.match(/^- \*\*(.+?)\*\*(.*)/);
             if (m) {
-                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(conceptFile(\'$1\'));event.preventDefault();" style="color:var(--ac);">$1</a>');
+                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
                 html += '<div style="margin:.5rem 0;padding:.5rem;background:var(--bg2);border-radius:.5rem;"><strong>'+esc(m[1])+'</strong>'+rest+'</div>';
-            }
         }
         else if (line.startsWith('- ')) {
             let t = line.substring(2);
             t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(conceptFile(\'$1\'));event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
             html += '<div style="margin:.3rem 0;padding-left:1rem;color:var(--t2);">• '+t+'</div>';
         }
         else if (line.startsWith('---')) html += '<hr style="border:none;border-top:1px solid var(--bd);margin:1.5rem 0;">';
         else if (line.trim()) {
             let t = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(conceptFile(\'$1\'));event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
             html += '<p style="margin:.3rem 0;color:var(--t2);">'+t+'</p>';
-        }
     });
     return html;
 }
