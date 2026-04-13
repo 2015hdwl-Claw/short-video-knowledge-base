@@ -92,6 +92,8 @@
         .btn-save:hover { background: #2563eb; }
         .btn-cancel { background: #334155; color: #94a3b8; }
         .btn-cancel:hover { background: #475569; }
+        .btn-delete { background: #7f1d1d; color: #fca5a5; }
+        .btn-delete:hover { background: #991b1b; }
         .edit-status { margin-top: 0.75rem; font-size: 0.85rem; }
         .edit-status.ok { color: #4ade80; }
         .edit-status.err { color: #f87171; }
@@ -158,9 +160,9 @@
     <div class="edit-overlay" id="editOverlay">
         <div class="edit-box">
             <h3 id="editTitle">✏️ 編輯</h3>
-            <input type="text" id="editTags" placeholder="標籤(逗號分隔)">
-            <textarea id="editContent" placeholder="內容..."></textarea>
+            <div id="editFields"></div>
             <div class="edit-actions">
+                <button class="btn-delete" id="btnDelete" onclick="deleteItem()" style="display:none;margin-right:auto;">🗑️ 刪除</button>
                 <button class="btn-cancel" onclick="closeEdit()">取消</button>
                 <button class="btn-save" onclick="saveEdit()">💾 儲存</button>
             </div>
@@ -494,8 +496,8 @@ function renderNotes(notes) {
 
 function filterNotes() {
     const q = document.getElementById('noteSearch').value.toLowerCase();
-    const filtered = allNotes.filter(n => 
-        (n.content || n.title || '').toLowerCase().includes(q) || 
+    const filtered = allNotes.filter(n =>
+        (n.content || n.title || '').toLowerCase().includes(q) ||
         (n.tags || []).some(t => t.toLowerCase().includes(q))
     );
     renderNotes(filtered);
@@ -510,29 +512,43 @@ function ensureGHToken() {
     if (t) { localStorage.setItem('gh_kb_token', t); return true; }
     return false;
 }
-let currentEdit = null; // { type: 'note'|'video', index, file }
+let currentEdit = null;
+
+function makeField(label, id, value, type='text') {
+    if (type === 'textarea') {
+        return `<div style="margin-bottom:0.75rem;"><label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:0.25rem;">${label}</label><textarea id="${id}" style="width:100%;min-height:120px;background:#0f172a;border:1px solid #475569;color:#e2e8f0;padding:0.5rem;border-radius:0.5rem;font-size:0.9rem;font-family:inherit;resize:vertical;">${esc(value||'')}</textarea></div>`;
+    }
+    return `<div style="margin-bottom:0.75rem;"><label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:0.25rem;">${label}</label><input type="text" id="${id}" value="${esc(value||'')}" style="width:100%;background:#0f172a;border:1px solid #475569;color:#e2e8f0;padding:0.5rem;border-radius:0.5rem;font-size:0.9rem;"></div>`;
+}
 
 function openEdit(type, index, file) {
     if (!ensureGHToken()) return;
     currentEdit = { type, index, file };
-    const overlay = document.getElementById('editOverlay');
-    const titleEl = document.getElementById('editTitle');
-    const tagsEl = document.getElementById('editTags');
-    const contentEl = document.getElementById('editContent');
     document.getElementById('editStatus').textContent = '';
+    document.getElementById('editStatus').className = 'edit-status';
+    const fieldsEl = document.getElementById('editFields');
+    const titleEl = document.getElementById('editTitle');
+    const delBtn = document.getElementById('btnDelete');
+    delBtn.style.display = 'inline-block';
 
     if (type === 'note' && allNotes[index]) {
         const n = allNotes[index];
         titleEl.textContent = '✏️ 編輯筆記';
-        tagsEl.value = (n.tags || []).join(', ');
-        contentEl.value = n.content || n.title || '';
+        fieldsEl.innerHTML = makeField('內容', 'ed_content', n.content || n.title || '', 'textarea')
+            + makeField('標籤（逗號分隔）', 'ed_tags', (n.tags||[]).join(', '));
     } else if (type === 'video' && DATA[index]) {
         const d = DATA[index];
         titleEl.textContent = '✏️ 編輯知識卡片';
-        tagsEl.value = (d.tags || []).join(', ');
-        contentEl.value = d.core_points || '';
+        fieldsEl.innerHTML = makeField('標題', 'ed_title', d.title)
+            + makeField('分類', 'ed_category', d.category)
+            + makeField('來源/作者', 'ed_source', d.source)
+            + makeField('標籤（逗號分隔）', 'ed_tags', (d.tags||[]).join(', '))
+            + makeField('核心重點', 'ed_points', d.core_points, 'textarea')
+            + makeField('實踐建議', 'ed_advice', d.advice || '', 'textarea')
+            + makeField('適合對象', 'ed_audience', d.audience || '')
+            + makeField('備註', 'ed_note', d.note || '', 'textarea');
     }
-    overlay.classList.add('active');
+    document.getElementById('editOverlay').classList.add('active');
 }
 
 function closeEdit() {
@@ -540,94 +556,109 @@ function closeEdit() {
     currentEdit = null;
 }
 
-function editNote(index) {
-    openEdit('note', index, allNotes[index].file);
+function editNote(index) { openEdit('note', index, allNotes[index].file); }
+
+function getVal(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+
+async function ghPut(path, body) {
+    const res = await fetch(GH_API + path, {
+        method: 'PUT',
+        headers: { 'Authorization': 'token ' + getGHToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.message || 'HTTP ' + res.status); }
+    return res.json();
+}
+
+async function ghGet(path) {
+    const res = await fetch(GH_API + path, { headers: { 'Authorization': 'token ' + getGHToken() } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
 }
 
 async function saveEdit() {
     if (!currentEdit) return;
-    const statusEl = document.getElementById('editStatus');
-    statusEl.textContent = '⏳ 儲存中...';
-    statusEl.className = 'edit-status';
+    const s = document.getElementById('editStatus');
+    s.textContent = '⏳ 儲存中...'; s.className = 'edit-status';
 
-    const newTags = document.getElementById('editTags').value.split(',').map(t => t.trim()).filter(t => t);
-    const newContent = document.getElementById('editContent').value;
-
-    if (currentEdit.type === 'note') {
-        const file = currentEdit.file;
-        // Fetch current content
-        try {
-            const res = await fetch(GH_API + file, { headers: { 'Authorization': 'token ' + getGHToken() } });
-            const data = await res.json();
-            const currentMd = atob(data.content);
-            // Rebuild MD with new content
-            const headerEnd = currentMd.indexOf('---\n') + 4;
-            const header = currentMd.substring(0, headerEnd);
-            const dateM = currentMd.match(/\*\*日期\*\*：(\S+)/);
-            const timeM = currentMd.match(/\*\*時間\*\*：(\S+)/);
-            const sourceM = currentMd.match(/\*\*來源\*\*：(\S+)/);
-            const reminderM = currentMd.match(/\*\*提醒\*\*：(.+)/);
+    try {
+        if (currentEdit.type === 'note') {
+            const file = currentEdit.file;
+            const remote = await ghGet(file);
+            const md = atob(remote.content);
+            const headerEnd = md.indexOf('---') + 4;
+            const header = md.substring(0, headerEnd);
+            const newContent = getVal('ed_content');
+            const newTags = getVal('ed_tags');
             let newMd = header + newContent + '\n';
-            // Update header with new tags
-            newMd = newMd.replace(/\*\*標籤\*\*：.*/, '**標籤**：' + newTags.join(', '));
-            // Push to GitHub
-            const putRes = await fetch(GH_API + file, {
-                method: 'PUT',
-                headers: { 'Authorization': 'token ' + getGHToken(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: '📝 編輯筆記', content: btoa(unescape(encodeURIComponent(newMd))), sha: data.sha })
-            });
-            if (putRes.ok) {
-                statusEl.textContent = '✅ 已儲存！';
-                statusEl.className = 'edit-status ok';
-                // Update local
-                allNotes[currentEdit.index].content = newContent;
-                allNotes[currentEdit.index].tags = newTags;
-                renderNotes(allNotes);
-                setTimeout(closeEdit, 1000);
-            } else {
-                const err = await putRes.json();
-                statusEl.textContent = '❌ 儲存失敗：' + (err.message || 'unknown');
-                statusEl.className = 'edit-status err';
-            }
-        } catch (e) {
-            statusEl.textContent = '❌ 網路錯誤：' + e.message;
-            statusEl.className = 'edit-status err';
-        }
-    } else if (currentEdit.type === 'video') {
-        // For videos, edit the JSON
-        try {
-            const res = await fetch(GH_API + 'short-videos.json', { headers: { 'Authorization': 'token ' + getGHToken() } });
-            const data = await res.json();
-            const videos = Array.isArray(data) ? data : (data.videos || []);
+            newMd = newMd.replace(/\*\*標籤\*\*：.*/, '**標籤**：' + newTags);
+            await ghPut(file, { message: '📝 編輯筆記', content: btoa(unescape(encodeURIComponent(newMd))), sha: remote.sha });
+            allNotes[currentEdit.index].content = newContent;
+            allNotes[currentEdit.index].tags = newTags.split(',').map(t=>t.trim()).filter(Boolean);
+            renderNotes(allNotes);
+        } else if (currentEdit.type === 'video') {
+            const remote = await ghGet('short-videos.json');
+            const parsed = typeof remote.content === 'string' ? JSON.parse(atob(remote.content)) : remote;
+            const videos = Array.isArray(parsed) ? parsed : (parsed.videos || []);
             const idx = currentEdit.index;
-            videos[idx].core_points = newContent;
-            videos[idx].tags = newTags;
+            if (!videos[idx]) throw new Error('找不到該知識卡片（index ' + idx + '）');
+            videos[idx].title = getVal('ed_title');
+            videos[idx].category = getVal('ed_category');
+            videos[idx].source = getVal('ed_source');
+            videos[idx].tags = getVal('ed_tags').split(',').map(t=>t.trim()).filter(Boolean);
+            videos[idx].core_points = getVal('ed_points');
+            videos[idx].advice = getVal('ed_advice');
+            videos[idx].audience = getVal('ed_audience');
+            videos[idx].note = getVal('ed_note');
             const newJson = JSON.stringify({ videos }, null, 2);
-            const putRes = await fetch(GH_API + 'short-videos.json', {
-                method: 'PUT',
-                headers: { 'Authorization': 'token ' + getGHToken(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: '✏️ 編輯知識卡片：' + videos[idx].title.substring(0, 20), content: btoa(unescape(encodeURIComponent(newJson))), sha: data.sha || JSON.parse(atob(data.content)).sha })
-            });
-            if (putRes.ok) {
-                statusEl.textContent = '✅ 已儲存！';
-                statusEl.className = 'edit-status ok';
-                DATA[idx].core_points = newContent;
-                DATA[idx].tags = newTags;
-                render();
-                setTimeout(closeEdit, 1000);
-            } else {
-                const err = await putRes.json();
-                statusEl.textContent = '❌ 儲存失敗：' + (err.message || 'unknown');
-                statusEl.className = 'edit-status err';
-            }
-        } catch (e) {
-            statusEl.textContent = '❌ 網路錯誤：' + e.message;
-            statusEl.className = 'edit-status err';
+            await ghPut('short-videos.json', { message: '✏️ 編輯知識卡片', content: btoa(unescape(encodeURIComponent(newJson))), sha: remote.sha });
+            Object.assign(DATA[idx], videos[idx]);
+            render();
         }
+        s.textContent = '✅ 已儲存！'; s.className = 'edit-status ok';
+        setTimeout(closeEdit, 800);
+    } catch (e) {
+        s.textContent = '❌ 失敗：' + e.message; s.className = 'edit-status err';
     }
 }
 
-// Close edit on overlay click
+async function deleteItem() {
+    if (!currentEdit) return;
+    const label = currentEdit.type === 'note' ? '筆記' : '知識卡片';
+    if (!confirm(`確定要刪除這${label}嗎？此操作無法復原。`)) return;
+    const s = document.getElementById('editStatus');
+    s.textContent = '⏳ 刪除中...'; s.className = 'edit-status';
+
+    try {
+        if (currentEdit.type === 'note') {
+            const file = currentEdit.file;
+            const remote = await ghGet(file);
+            await fetch(GH_API + file, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'token ' + getGHToken(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '🗑️ 刪除筆記', sha: remote.sha })
+            });
+            allNotes.splice(currentEdit.index, 1);
+            renderNotes(allNotes);
+        } else if (currentEdit.type === 'video') {
+            const remote = await ghGet('short-videos.json');
+            const parsed = typeof remote.content === 'string' ? JSON.parse(atob(remote.content)) : remote;
+            const videos = Array.isArray(parsed) ? parsed : (parsed.videos || []);
+            const idx = currentEdit.index;
+            const title = videos[idx].title;
+            videos.splice(idx, 1);
+            const newJson = JSON.stringify({ videos }, null, 2);
+            await ghPut('short-videos.json', { message: '🗑️ 刪除知識卡片：' + title.substring(0,20), content: btoa(unescape(encodeURIComponent(newJson))), sha: remote.sha });
+            DATA.splice(idx, 1);
+            render();
+        }
+        s.textContent = '✅ 已刪除！'; s.className = 'edit-status ok';
+        setTimeout(closeEdit, 800);
+    } catch (e) {
+        s.textContent = '❌ 刪除失敗：' + e.message; s.className = 'edit-status err';
+    }
+}
+
 document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
     </script>
 </body>
