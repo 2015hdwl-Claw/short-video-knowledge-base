@@ -447,7 +447,7 @@ function loadWikiIndexLegacy() { wikiLoaded = true; }
 function showWikiView(mode) {} // no-op, handled by showKwikiView
 
 function loadWikiPage(name) {
-    loadConceptPage('wiki/concepts/' + name + '.md');
+    loadConceptPage(WIKI_BASE + 'concepts/' + name + '.md');
     switchTab('kwiki');
 }
 
@@ -691,7 +691,7 @@ function showKwikiView(mode) {
 async function loadKWiki() {
     kwikiLoaded = true;
     try {
-        const res = await fetch('wiki/index.md');
+        const res = await fetch(WIKI_BASE + 'index.md');
         if (!res.ok) throw new Error('404');
         const md = await res.text();
         window._wikiIndexMd = md;
@@ -711,7 +711,7 @@ function renderKWikiIndex(md) {
         html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">';
         rows.forEach(row => {
             const m = row.match(/\|\s*\[(.+?)\]\((.+?)\)\s*\|\s*(.+?)\s*\|\s*(\d+)/);
-            if (m) html += '<div onclick="loadConceptPage(\''+m[2]+'\')" style="background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;padding:1.25rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><h3 style="margin:0 0 .5rem;font-size:1.1rem;">'+esc(m[1])+'</h3><p style="margin:0 0 .75rem;color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</p><span style="font-size:.8rem;color:var(--ac);">📹 '+m[4]+' 筆 →</span></div>';
+            if (m) html += '<div onclick="loadConceptPage(WIKI_BASE + m[2])" style="background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;padding:1.25rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><h3 style="margin:0 0 .5rem;font-size:1.1rem;">'+esc(m[1])+'</h3><p style="margin:0 0 .75rem;color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</p><span style="font-size:.8rem;color:var(--ac);">📹 '+m[4]+' 筆 →</span></div>';
         });
         html += '</div>';
     }
@@ -727,7 +727,7 @@ function renderKwikiList() {
     let html = '<div style="padding:1rem 2rem;max-width:900px;margin:0 auto;">';
     rows.forEach(row => {
         const m = row.match(/\|\s*\[(.+?)\]\((.+?)\)\s*\|\s*(.+?)\s*\|\s*(\d+)/);
-        if (m) html += '<div onclick="loadConceptPage(\''+m[2]+'\');showKwikiView(\'index\')" style="padding:1rem;background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;margin-bottom:.75rem;cursor:pointer;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><strong>'+esc(m[1])+'</strong> <span style="color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</span> <span style="float:right;color:var(--ac);">📹 '+m[4]+'</span></div>';
+        if (m) html += '<div onclick="loadConceptPage(WIKI_BASE + m[2]);showKwikiView(\'index\')" style="padding:1rem;background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;margin-bottom:.75rem;cursor:pointer;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><strong>'+esc(m[1])+'</strong> <span style="color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</span> <span style="float:right;color:var(--ac);">📹 '+m[4]+'</span></div>';
     });
     html += '</div>';
     el.innerHTML = html;
@@ -785,7 +785,7 @@ function renderKwikiGraph() {
     const node = svg.append('g').selectAll('g').data(nodes).enter().append('g').style('cursor','pointer').call(d3.drag().on('start',(e,d)=>{if(!e.active)simulation.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y}).on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y}).on('end',(e,d)=>{if(!e.active)simulation.alphaTarget(0);d.fx=null;d.fy=null}));
     node.append('circle').attr('r',d=>d.size).attr('fill',d=>colorMap[d.type]).attr('opacity',.8);
     node.append('text').text(d=>d.id.substring(0,6)).attr('text-anchor','middle').attr('dy',d=>d.size+14).attr('fill','#94a3b8').attr('font-size','11px');
-    node.on('click',(e,d)=>{if(d.type==='concept'){const file='wiki/concepts/'+d.id+'.md';loadConceptPage(file);showKwikiView('index');}});
+    node.on('click',(e,d)=>{if(d.type==='concept'){const file=WIKI_BASE+'concepts/'+d.id+'.md';loadConceptPage(file);showKwikiView('index');}});
     simulation.on('tick',()=>node.attr('transform',d=>`translate(${d.x},${d.y})`));
 }
 
@@ -798,20 +798,20 @@ function renderMd(text) {
         else if (line.startsWith('- **')) {
             const m = line.match(/^- \*\*(.+?)\*\*(.*)/);
             if (m) {
-                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(WIKI_BASE+\'concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
                 html += '<div style="margin:.5rem 0;padding:.5rem;background:var(--bg2);border-radius:.5rem;"><strong>'+esc(m[1])+'</strong>'+rest+'</div>';
             }
         }
         else if (line.startsWith('- ')) {
             let t = line.substring(2);
             t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(WIKI_BASE+\'concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
             html += '<div style="margin:.3rem 0;padding-left:1rem;color:var(--t2);">• '+t+'</div>';
         }
         else if (line.startsWith('---')) html += '<hr style="border:none;border-top:1px solid var(--bd);margin:1.5rem 0;">';
         else if (line.trim()) {
             let t = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(WIKI_BASE+\'concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
             html += '<p style="margin:.3rem 0;color:var(--t2);">'+t+'</p>';
         }
     });
