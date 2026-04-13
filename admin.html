@@ -711,7 +711,7 @@ function renderKWikiIndex(md) {
         html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">';
         rows.forEach(row => {
             const m = row.match(/\|\s*\[(.+?)\]\((.+?)\)\s*\|\s*(.+?)\s*\|\s*(\d+)/);
-            if (m) html += '<div onclick="loadConceptPage(\''+m[2]+'\')" style="background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;padding:1.25rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><h3 style="margin:0 0 .5rem;font-size:1.1rem;">'+esc(m[1])+'</h3><p style="margin:0 0 .75rem;color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</p><span style="font-size:.8rem;color:var(--ac);">📹 '+m[4]+' 筆 →</span></div>';
+            if (m) html += '<div onclick="loadConceptPage(\'wiki/'+m[2])" style="background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;padding:1.25rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><h3 style="margin:0 0 .5rem;font-size:1.1rem;">'+esc(m[1])+'</h3><p style="margin:0 0 .75rem;color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</p><span style="font-size:.8rem;color:var(--ac);">📹 '+m[4]+' 筆 →</span></div>';
         });
         html += '</div>';
     }
@@ -727,7 +727,7 @@ function renderKwikiList() {
     let html = '<div style="padding:1rem 2rem;max-width:900px;margin:0 auto;">';
     rows.forEach(row => {
         const m = row.match(/\|\s*\[(.+?)\]\((.+?)\)\s*\|\s*(.+?)\s*\|\s*(\d+)/);
-        if (m) html += '<div onclick="loadConceptPage(\''+m[2]+'\');showKwikiView(\'index\')" style="padding:1rem;background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;margin-bottom:.75rem;cursor:pointer;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><strong>'+esc(m[1])+'</strong> <span style="color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</span> <span style="float:right;color:var(--ac);">📹 '+m[4]+'</span></div>';
+        if (m) html += '<div onclick="loadConceptPage(\'wiki/'+m[2]);showKwikiView(\'index\')" style="padding:1rem;background:var(--bg2);border:1px solid var(--bd);border-radius:.75rem;margin-bottom:.75rem;cursor:pointer;" onmouseover="this.style.borderColor=\'var(--ac)\'" onmouseout="this.style.borderColor=\'var(--bd)\'"><strong>'+esc(m[1])+'</strong> <span style="color:var(--tm);font-size:.85rem;">'+esc(m[3])+'</span> <span style="float:right;color:var(--ac);">📹 '+m[4]+'</span></div>';
     });
     html += '</div>';
     el.innerHTML = html;
