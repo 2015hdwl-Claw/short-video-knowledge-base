@@ -4,104 +4,157 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短影音知識庫 Admin</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js">
+function setTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.style.borderColor='transparent');
+    event.target.style.borderColor=t?'var(--t1)':'var(--t1)';
+    try{localStorage.setItem('kb_theme',t)}catch(e){}
+}
+function loadTheme(){try{const t=localStorage.getItem('kb_theme');if(t){document.documentElement.setAttribute('data-theme',t)}}catch(e){}}
+function toggleSidebar(){document.getElementById('wikiSidebar').classList.toggle('open')}
+loadTheme();
+</script>
+    <script src="https://d3js.org/d3.v7.min.js">
+function setTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.style.borderColor='transparent');
+    event.target.style.borderColor=t?'var(--t1)':'var(--t1)';
+    try{localStorage.setItem('kb_theme',t)}catch(e){}
+}
+function loadTheme(){try{const t=localStorage.getItem('kb_theme');if(t){document.documentElement.setAttribute('data-theme',t)}}catch(e){}}
+function toggleSidebar(){document.getElementById('wikiSidebar').classList.toggle('open')}
+loadTheme();
+</script>
     <style>
+/* === THEMES === */
+:root { --bg1:#0f172a; --bg2:#1e293b; --bg3:#334155; --bd:#475569; --t1:#f8fafc; --t2:#e2e8f0; --tm:#94a3b8; --td:#64748b; --ac:#3b82f6; --ach:#2563eb; --acg:rgba(59,130,246,.15); --pu:#c084fc; --gr:#4ade80; --ye:#fbbf24; --rd:#f87171; --pub:#3b1f4a; --grb:#1f3329; --blb:#1e3a5f; --yeb:#3b2f1a; }
+[data-theme=ocean]{--bg1:#0c1929;--bg2:#152238;--bg3:#1e3350;--bd:#2a4a6b;--ac:#0ea5e9;--ach:#0284c7;--acg:rgba(14,165,233,.15)}
+[data-theme=forest]{--bg1:#0f1f0f;--bg2:#1a2e1a;--bg3:#2a402a;--bd:#3d5c3d;--ac:#22c55e;--ach:#16a34a;--acg:rgba(34,197,94,.15)}
+[data-theme=sunset]{--bg1:#1f0f0f;--bg2:#2e1a1a;--bg3:#4a2a2a;--bd:#6b3d3d;--ac:#f97316;--ach:#ea580c;--acg:rgba(249,115,22,.15)}
+[data-theme=purple]{--bg1:#150f1f;--bg2:#1e1530;--bg3:#2d2045;--bd:#4a356b;--ac:#a855f7;--ach:#9333ea;--acg:rgba(168,85,247,.15)}
+[data-theme=rose]{--bg1:#1f0f15;--bg2:#2e1520;--bg3:#45202d;--bd:#6b3548;--ac:#f43f5e;--ach:#e11d48;--acg:rgba(244,63,94,.15)}
+[data-theme=light]{--bg1:#f8fafc;--bg2:#fff;--bg3:#e2e8f0;--bd:#cbd5e1;--t1:#0f172a;--t2:#334155;--tm:#64748b;--td:#94a3b8;--ac:#2563eb;--ach:#1d4ed8;--acg:rgba(37,99,235,.1);--pub:#f3e8ff;--grb:#dcfce7;--blb:#dbeafe;--yeb:#fef3c7;--pu:#9333ea;--gr:#16a34a;--ye:#d97706;--rd:#dc2626}
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
-        .header h1 { font-size: 1.5rem; color: #f8fafc; }
-        .header .stats { color: #94a3b8; margin-top: 0.3rem; font-size: 0.9rem; }
-        .tabs { display: flex; gap: 0; border-bottom: 1px solid #334155; background: #1e293b; }
-        .tab { padding: 0.75rem 1.5rem; cursor: pointer; color: #94a3b8; font-size: 0.95rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
-        .tab:hover { color: #e2e8f0; }
-        .tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg1); color: var(--t2); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, var(--bg2) 0%, var(--bg3) 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 1.5rem; color: var(--t1); }
+        .header .stats { color: var(--tm); margin-top: 0.3rem; font-size: 0.9rem; }
+        .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--bd); background: var(--bg2); }
+        .tab { padding: 0.75rem 1.5rem; cursor: pointer; color: var(--tm); font-size: 0.95rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab:hover { color: var(--t2); }
+        .tab.active { color: var(--ac); border-bottom-color: #3b82f6; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .controls { padding: 1rem 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
-        .controls input, .controls select { background: #1e293b; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; }
-        .controls input:focus, .controls select:focus { outline: none; border-color: #3b82f6; }
+        .controls input, .controls select { background: var(--bg2); border: 1px solid var(--bd); color: var(--t2); padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; }
+        .controls input:focus, .controls select:focus { outline: none; border-color: var(--ac); }
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem; padding: 1rem 2rem 3rem; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; transition: all 0.2s; cursor: pointer; }
-        .card:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.15); }
-        .card .title { font-size: 1rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.5rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card { background: var(--bg2); border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; transition: all 0.2s; cursor: pointer; }
+        .card:hover { border-color: var(--ac); transform: translateY(-2px); box-shadow: 0 4px 12px var(--acg); }
+        .card .title { font-size: 1rem; font-weight: 600; color: var(--t1); margin-bottom: 0.5rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .card .meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
         .card .badge { font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 9999px; }
-        .badge-source { background: #1e3a5f; color: #60a5fa; }
-        .badge-cat { background: #3b1f4a; color: #c084fc; }
-        .badge-date { background: #1f3329; color: #4ade80; }
-        .badge-concept { background: #3b2f1a; color: #fbbf24; cursor: pointer; }
+        .badge-source { background: var(--blb); color: var(--ac); }
+        .badge-cat { background: var(--pub); color: var(--pu); }
+        .badge-date { background: var(--grb); color: var(--gr); }
+        .badge-concept { background: var(--yeb); color: var(--ye); cursor: pointer; }
         .badge-concept:hover { background: #5a4520; }
-        .card .points { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+        .card .points { font-size: 0.85rem; color: var(--tm); line-height: 1.6; }
         .card .points li { margin-bottom: 0.25rem; }
-        .card .note { margin-top: 0.5rem; font-size: 0.85rem; color: #fbbf24; font-style: italic; }
+        .card .note { margin-top: 0.5rem; font-size: 0.85rem; color: var(--ye); font-style: italic; }
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
         .modal.active { display: flex; }
-        .modal-content { background: #1e293b; border: 1px solid #475569; border-radius: 1rem; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 2rem; }
+        .modal-content { background: var(--bg2); border: 1px solid var(--bd); border-radius: 1rem; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 2rem; }
         .modal-content h2 { margin-bottom: 1rem; }
-        .modal-content .close { float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
-        .modal-content .close:hover { color: #f8fafc; }
-        .empty { text-align: center; padding: 3rem; color: #64748b; }
+        .modal-content .close { float: right; cursor: pointer; font-size: 1.5rem; color: var(--tm); }
+        .modal-content .close:hover { color: var(--t1); }
+        .empty { text-align: center; padding: 3rem; color: var(--td); }
         /* Wiki styles */
         .wiki-container { display: flex; height: calc(100vh - 130px); }
-        .wiki-sidebar { width: 280px; min-width: 280px; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; padding: 1rem; }
-        .wiki-sidebar h3 { font-size: 0.85rem; color: #64748b; text-transform: uppercase; margin: 1rem 0 0.5rem; letter-spacing: 0.05em; }
+        .wiki-sidebar { width: 280px; min-width: 280px; background: var(--bg2); border-right: 1px solid var(--bd); overflow-y: auto; padding: 1rem; }
+        .wiki-sidebar h3 { font-size: 0.85rem; color: var(--td); text-transform: uppercase; margin: 1rem 0 0.5rem; letter-spacing: 0.05em; }
         .wiki-sidebar h3:first-child { margin-top: 0; }
-        .wiki-item { padding: 0.4rem 0.6rem; color: #94a3b8; cursor: pointer; border-radius: 0.375rem; font-size: 0.9rem; transition: all 0.15s; }
-        .wiki-item:hover { background: #334155; color: #e2e8f0; }
-        .wiki-item.active { background: #1e3a5f; color: #60a5fa; }
+        .wiki-item { padding: 0.4rem 0.6rem; color: var(--tm); cursor: pointer; border-radius: 0.375rem; font-size: 0.9rem; transition: all 0.15s; }
+        .wiki-item:hover { background: var(--bg3); color: var(--t2); }
+        .wiki-item.active { background: var(--blb); color: var(--ac); }
         .wiki-main { flex: 1; overflow-y: auto; padding: 2rem; }
-        .wiki-main h1 { font-size: 1.5rem; color: #f8fafc; margin-bottom: 0.5rem; }
-        .wiki-main h2 { font-size: 1.2rem; color: #c084fc; margin: 1.5rem 0 0.75rem; }
-        .wiki-main h3 { font-size: 1rem; color: #60a5fa; margin: 1rem 0 0.5rem; }
+        .wiki-main h1 { font-size: 1.5rem; color: var(--t1); margin-bottom: 0.5rem; }
+        .wiki-main h2 { font-size: 1.2rem; color: var(--pu); margin: 1.5rem 0 0.75rem; }
+        .wiki-main h3 { font-size: 1rem; color: var(--ac); margin: 1rem 0 0.5rem; }
         .wiki-main p { color: #cbd5e1; line-height: 1.8; margin-bottom: 0.75rem; }
         .wiki-main ul, .wiki-main ol { color: #cbd5e1; padding-left: 1.5rem; margin-bottom: 0.75rem; }
         .wiki-main li { line-height: 1.8; margin-bottom: 0.25rem; }
-        .wiki-main blockquote { border-left: 3px solid #3b82f6; padding: 0.5rem 1rem; margin: 1rem 0; background: #1e293b; border-radius: 0 0.5rem 0.5rem 0; }
-        .wiki-main blockquote p { color: #94a3b8; }
-        .wiki-main hr { border: none; border-top: 1px solid #334155; margin: 1.5rem 0; }
-        .wiki-main a { color: #60a5fa; text-decoration: none; }
+        .wiki-main blockquote { border-left: 3px solid var(--ac); padding: 0.5rem 1rem; margin: 1rem 0; background: var(--bg2); border-radius: 0 0.5rem 0.5rem 0; }
+        .wiki-main blockquote p { color: var(--tm); }
+        .wiki-main hr { border: none; border-top: 1px solid var(--bd); margin: 1.5rem 0; }
+        .wiki-main a { color: var(--ac); text-decoration: none; }
         .wiki-main a:hover { text-decoration: underline; }
         .wiki-main table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
         .wiki-main th, .wiki-main td { padding: 0.5rem 0.75rem; border: 1px solid #334155; text-align: left; }
-        .wiki-main th { background: #1e293b; color: #94a3b8; font-weight: 600; }
+        .wiki-main th { background: var(--bg2); color: var(--tm); font-weight: 600; }
         .wiki-main td { color: #cbd5e1; }
-        .wiki-main code { background: #334155; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.85em; color: #f0abfc; }
+        .wiki-main code { background: var(--bg3); padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.85em; color: #f0abfc; }
         .wiki-placeholder { text-align: center; padding: 4rem; color: #475569; }
         .wiki-placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
         .wiki-search { width: 100%; margin-bottom: 1rem; }
         /* Related videos in wiki */
-        .related-video-card { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.15s; }
-        .related-video-card:hover { border-color: #3b82f6; background: #1e293b; }
-        .related-video-card .rv-title { font-size: 0.9rem; color: #f8fafc; margin-bottom: 0.25rem; }
-        .related-video-card .rv-meta { font-size: 0.75rem; color: #64748b; }
-        .back-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #60a5fa; cursor: pointer; font-size: 0.9rem; margin-bottom: 1rem; }
+        .related-video-card { background: var(--bg1); border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.15s; }
+        .related-video-card:hover { border-color: var(--ac); background: var(--bg2); }
+        .related-video-card .rv-title { font-size: 0.9rem; color: var(--t1); margin-bottom: 0.25rem; }
+        .related-video-card .rv-meta { font-size: 0.75rem; color: var(--td); }
+        .back-link { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--ac); cursor: pointer; font-size: 0.9rem; margin-bottom: 1rem; }
         .back-link:hover { text-decoration: underline; }
         .concept-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.75rem; }
         /* Edit modal */
         .edit-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
         .edit-overlay.active { display: flex; }
-        .edit-box { background: #1e293b; border: 1px solid #475569; border-radius: 1rem; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 1.5rem; }
-        .edit-box h3 { color: #f8fafc; margin-bottom: 1rem; }
-        .edit-box textarea { width: 100%; min-height: 200px; background: #0f172a; border: 1px solid #475569; color: #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.9rem; font-family: inherit; resize: vertical; }
-        .edit-box textarea:focus { outline: none; border-color: #3b82f6; }
-        .edit-box input[type=text] { width: 100%; background: #0f172a; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 0.75rem; font-size: 0.9rem; }
-        .edit-box input:focus { outline: none; border-color: #3b82f6; }
+        .edit-box { background: var(--bg2); border: 1px solid var(--bd); border-radius: 1rem; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 1.5rem; }
+        .edit-box h3 { color: var(--t1); margin-bottom: 1rem; }
+        .edit-box textarea { width: 100%; min-height: 200px; background: var(--bg1); border: 1px solid var(--bd); color: var(--t2); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.9rem; font-family: inherit; resize: vertical; }
+        .edit-box textarea:focus { outline: none; border-color: var(--ac); }
+        .edit-box input[type=text] { width: 100%; background: var(--bg1); border: 1px solid var(--bd); color: var(--t2); padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 0.75rem; font-size: 0.9rem; }
+        .edit-box input:focus { outline: none; border-color: var(--ac); }
         .edit-actions { display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: flex-end; }
         .edit-actions button { padding: 0.5rem 1.25rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem; }
-        .btn-save { background: #3b82f6; color: white; }
-        .btn-save:hover { background: #2563eb; }
-        .btn-cancel { background: #334155; color: #94a3b8; }
+        .btn-save { background: var(--ac); color: white; }
+        .btn-save:hover { background: var(--ach); }
+        .btn-cancel { background: var(--bg3); color: var(--tm); }
         .btn-cancel:hover { background: #475569; }
         .btn-delete { background: #7f1d1d; color: #fca5a5; }
         .btn-delete:hover { background: #991b1b; }
         .edit-status { margin-top: 0.75rem; font-size: 0.85rem; }
-        .edit-status.ok { color: #4ade80; }
-        .edit-status.err { color: #f87171; }
-        .note-reminder { font-size: 0.75rem; color: #fbbf24; margin-top: 0.3rem; }
-        .edit-icon { cursor: pointer; color: #64748b; font-size: 0.8rem; padding: 0.15rem 0.4rem; border-radius: 0.25rem; }
-        .edit-icon:hover { color: #60a5fa; background: #1e3a5f; }
-    </style>
+        .edit-status.ok { color: var(--gr); }
+        .edit-status.err { color: var(--rd); }
+        .note-reminder { font-size: 0.75rem; color: var(--ye); margin-top: 0.3rem; }
+        .edit-icon { cursor: pointer; color: var(--td); font-size: 0.8rem; padding: 0.15rem 0.4rem; border-radius: 0.25rem; }
+        .edit-icon:hover { color: var(--ac); background: var(--blb); }
+    
+/* === RESPONSIVE === */
+@media(max-width:1024px){.grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}.wiki-sidebar{width:220px;min-width:220px}}
+@media(max-width:768px){
+.header{padding:.75rem 1rem}.header h1{font-size:1.1rem}.header .stats{font-size:.75rem}
+.tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab{padding:.6rem .8rem;font-size:.8rem;white-space:nowrap;flex-shrink:0}
+.controls{padding:.6rem 1rem;gap:.5rem}.controls input,.controls select{font-size:.8rem}
+.grid{grid-template-columns:1fr;gap:.6rem;padding:.6rem 1rem 2rem}
+.card{padding:.85rem}.card .title{font-size:.9rem}.card .badge{font-size:.65rem}
+.modal-content{width:96%;max-height:90vh;padding:1.25rem}
+.wiki-container{position:relative}
+.wiki-sidebar{position:absolute;top:0;left:0;bottom:0;z-index:10;width:80%;max-width:300px;transform:translateX(-100%);transition:transform .3s;box-shadow:2px 0 12px rgba(0,0,0,.3)}
+.wiki-sidebar.open{transform:translateX(0)}
+.wiki-main{padding:1rem}.edit-box{width:96%;padding:1rem}
+.mob-toggle{display:inline-flex!important}
+.theme-dot{width:16px;height:16px}
+}
+@media(max-width:480px){
+.header h1{font-size:1rem}.card .badge{padding:.1rem .35rem;font-size:.6rem}
+.controls input[type=text]{min-width:120px}.edit-box{width:98%;padding:.85rem}.edit-box textarea{min-height:80px}
+}
+.mob-toggle{display:none}
+@media(min-width:769px){.mob-toggle{display:none!important}}
+
+</style>
 </head>
 <body>
     <div class="header">
@@ -109,7 +162,18 @@
             <h1>🎬 短影音知識庫</h1>
             <div class="stats" id="stats"></div>
         </div>
-        <div id="breadcrumb" style="font-size:0.85rem;color:#64748b;"></div>
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+            <div id="breadcrumb" style="font-size:.8rem;color:var(--td);"></div>
+            <div style="display:flex;gap:.3rem;" title="切換主題">
+                <div class="theme-dot active" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;background:#3b82f6;" onclick="setTheme('')"></div>
+                <div class="theme-dot" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;background:#0ea5e9;" onclick="setTheme('ocean')"></div>
+                <div class="theme-dot" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;background:#22c55e;" onclick="setTheme('forest')"></div>
+                <div class="theme-dot" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;background:#f97316;" onclick="setTheme('sunset')"></div>
+                <div class="theme-dot" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;background:#a855f7;" onclick="setTheme('purple')"></div>
+                <div class="theme-dot" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;background:#f43f5e;" onclick="setTheme('rose')"></div>
+                <div class="theme-dot" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid #94a3b8;background:#e2e8f0;" onclick="setTheme('light')"></div>
+            </div>
+        </div>
     </div>
     <div class="tabs">
         <div class="tab active" onclick="switchTab('videos')">📹 短影音列表</div>
@@ -137,7 +201,7 @@
     <div class="tab-content" id="tab-wiki">
         <div style="padding:0.5rem 1rem;display:flex;gap:0.5rem;background:#1e293b;border-bottom:1px solid #334155;">
             <button onclick="showWikiView('graph')" id="btnGraph" style="padding:0.4rem 1rem;border:1px solid #475569;background:#3b82f6;color:white;border-radius:0.375rem;cursor:pointer;font-size:0.85rem;">🌐 知識圖譜</button>
-            <button onclick="showWikiView('list')" id="btnList" style="padding:0.4rem 1rem;border:1px solid #475569;background:#1e293b;color:#94a3b8;border-radius:0.375rem;cursor:pointer;font-size:0.85rem;">📋 列表模式</button>
+            <button class="mob-toggle" onclick="toggleSidebar()" style="padding:.35rem .75rem;border:1px solid var(--bd);background:var(--bg2);color:var(--tm);border-radius:.375rem;cursor:pointer;font-size:.8rem;">☰</button><button onclick="showWikiView('list')" id="btnList" style="padding:0.4rem 1rem;border:1px solid #475569;background:#1e293b;color:#94a3b8;border-radius:0.375rem;cursor:pointer;font-size:0.85rem;">📋 列表模式</button>
         </div>
         <!-- Graph View -->
         <div id="wikiGraphView" style="height:calc(100vh - 170px);position:relative;">
@@ -829,6 +893,16 @@ async function deleteItem() {
 }
 
 document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
-    </script>
+    
+function setTheme(t){
+    document.documentElement.setAttribute('data-theme',t);
+    document.querySelectorAll('.theme-dot').forEach(d=>d.style.borderColor='transparent');
+    event.target.style.borderColor=t?'var(--t1)':'var(--t1)';
+    try{localStorage.setItem('kb_theme',t)}catch(e){}
+}
+function loadTheme(){try{const t=localStorage.getItem('kb_theme');if(t){document.documentElement.setAttribute('data-theme',t)}}catch(e){}}
+function toggleSidebar(){document.getElementById('wikiSidebar').classList.toggle('open')}
+loadTheme();
+</script>
 </body>
 </html>
