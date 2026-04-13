@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>短影音知識庫 Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 2rem; border-bottom: 1px solid #475569; }
+        .header h1 { font-size: 1.5rem; color: #f8fafc; }
+        .header .stats { color: #94a3b8; margin-top: 0.5rem; font-size: 0.9rem; }
+        .controls { padding: 1rem 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+        .controls input, .controls select { background: #1e293b; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; }
+        .controls input:focus, .controls select:focus { outline: none; border-color: #3b82f6; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1rem; padding: 1rem 2rem 3rem; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.25rem; transition: all 0.2s; cursor: pointer; }
+        .card:hover { border-color: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(59,130,246,0.15); }
+        .card .title { font-size: 1rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.5rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card .meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .card .badge { font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 9999px; }
+        .badge-source { background: #1e3a5f; color: #60a5fa; }
+        .badge-cat { background: #3b1f4a; color: #c084fc; }
+        .badge-date { background: #1f3329; color: #4ade80; }
+        .card .points { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+        .card .points li { margin-bottom: 0.25rem; }
+        .card .note { margin-top: 0.5rem; font-size: 0.85rem; color: #fbbf24; font-style: italic; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: #1e293b; border: 1px solid #475569; border-radius: 1rem; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; padding: 2rem; }
+        .modal-content h2 { margin-bottom: 1rem; }
+        .modal-content .close { float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
+        .modal-content .close:hover { color: #f8fafc; }
+        .empty { text-align: center; padding: 3rem; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎬 短影音知識庫</h1>
+        <div class="stats" id="stats"></div>
+    </div>
+    <div class="controls">
+        <input type="text" id="search" placeholder="🔍 搜尋標題、作者、內容..." style="flex:1;min-width:200px">
+        <select id="catFilter"><option value="">所有分類</option></select>
+        <select id="sortOrder"><option value="date-desc">最新優先</option><option value="date-asc">最舊優先</option><option value="title">標題排序</option></select>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <span class="close" onclick="document.getElementById('modal').classList.remove('active')">✕</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    <script>
+let DATA = []; fetch("short-videos.json").then(r=>r.json()).then(d=>{DATA=Array.isArray(d)?d:(d.videos||[]);render();});
+const categories = [...new Set(DATA.map(d => d.category))].sort();
+const catFilter = document.getElementById('catFilter');
+categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
+document.getElementById('stats').textContent = `共 ${DATA.length} 筆知識卡片`;
+
+function render() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const cat = catFilter.value;
+    const sort = document.getElementById('sortOrder').value;
+    let filtered = DATA.filter(d => {
+        if (cat && d.category !== cat) return false;
+        if (q && !d.title.toLowerCase().includes(q) && !d.source.toLowerCase().includes(q) && !(d.core_points||'').toLowerCase().includes(q)) return false;
+        return true;
+    });
+    if (sort === 'date-desc') filtered.sort((a,b) => b.date.localeCompare(a.date));
+    else if (sort === 'date-asc') filtered.sort((a,b) => a.date.localeCompare(b.date));
+    else if (sort === 'title') filtered.sort((a,b) => a.title.localeCompare(b.title));
+
+    const grid = document.getElementById('grid');
+    if (!filtered.length) { grid.innerHTML = '<div class="empty">沒有找到匹配的卡片</div>'; return; }
+    grid.innerHTML = filtered.map((d, i) => {
+        const points = (d.core_points || '').split('\n').filter(p => p.trim()).slice(0, 3);
+        const ptsHtml = points.length ? '<ul class="points">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : '';
+        const noteHtml = d.note ? '<div class="note">📝 ' + d.note + '</div>' : '';
+        return `<div class="card" onclick="openModal(${DATA.indexOf(d)})">
+            <div class="title">${d.title}</div>
+            <div class="meta">
+                <span class="badge badge-source">${d.source}</span>
+                <span class="badge badge-cat">${d.category}</span>
+                <span class="badge badge-date">${d.date}</span>
+            </div>
+            ${ptsHtml}${noteHtml}
+        </div>`;
+    }).join('');
+}
+
+function openModal(i) {
+    const d = DATA[i];
+    const points = (d.core_points || '').split('\n').filter(p => p.trim());
+    document.getElementById('modalBody').innerHTML = `
+        <h2>${d.title}</h2>
+        <div class="meta" style="margin-bottom:1rem">
+            <span class="badge badge-source">${d.source}</span>
+            <span class="badge badge-cat">${d.category}</span>
+            <span class="badge badge-date">${d.date}</span>
+        </div>
+        ${d.url ? '<p style="margin-bottom:1rem"><a href="' + d.url + '" target="_blank" style="color:#60a5fa">🔗 原始連結</a></p>' : ''}
+        ${points.length ? '<h3 style="margin:1rem 0 0.5rem">📌 核心重點</h3><ul class="points" style="list-style:decimal;padding-left:1.5rem">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : ''}
+        ${d.note ? '<p style="margin-top:1rem;color:#fbbf24">📝 ' + d.note + '</p>' : ''}
+    `;
+    document.getElementById('modal').classList.add('active');
+}
+document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('active'); });
+document.getElementById('search').addEventListener('input', render);
+catFilter.addEventListener('change', render);
+document.getElementById('sortOrder').addEventListener('change', render);
+render();
+    </script>
+</body>
+</html>
