@@ -438,7 +438,7 @@ function loadWikiIndexLegacy() { wikiLoaded = true; }
 function showWikiView(mode) {} // no-op, handled by showKwikiView
 
 function loadWikiPage(name) {
-    loadConceptPage('wiki/concepts/' + name + '.md');
+    loadConceptPage(conceptFile(name));
     switchTab('kwiki');
 }
 
@@ -768,9 +768,12 @@ function renderKwikiGraph() {
     const node = svg.append('g').selectAll('g').data(nodes).enter().append('g').style('cursor','pointer').call(d3.drag().on('start',(e,d)=>{if(!e.active)simulation.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y}).on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y}).on('end',(e,d)=>{if(!e.active)simulation.alphaTarget(0);d.fx=null;d.fy=null}));
     node.append('circle').attr('r',d=>d.size).attr('fill',d=>colorMap[d.type]).attr('opacity',.8);
     node.append('text').text(d=>d.id.substring(0,6)).attr('text-anchor','middle').attr('dy',d=>d.size+14).attr('fill','#94a3b8').attr('font-size','11px');
-    node.on('click',(e,d)=>{if(d.type==='concept'){const file='wiki/concepts/'+d.id+'.md';loadConceptPage(file);showKwikiView('index');}});
+    node.on('click',(e,d)=>{if(d.type==='concept'){loadConceptPage(conceptFile(d.id));showKwikiView('index');}});
     simulation.on('tick',()=>node.attr('transform',d=>`translate(${d.x},${d.y})`));
 }
+
+const conceptFileMap = {'AI工具與編程':'ai-coding-tools','AI趨勢與產業':'ai-trends','財經投資理財':'finance-investing','心理學與認知':'psychology','健康養生':'health','創業與商業模式':'entrepreneurship','學習與知識管理':'learning','科學歷史與人文':'science-history'};
+function conceptFile(name){ return 'wiki/concepts/' + (conceptFileMap[name] || name) + '.md'; }
 
 function renderMd(text) {
     let html = '';
@@ -781,20 +784,20 @@ function renderMd(text) {
         else if (line.startsWith('- **')) {
             const m = line.match(/^- \*\*(.+?)\*\*(.*)/);
             if (m) {
-                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(conceptFile('$1'));event.preventDefault();" style="color:var(--ac);">$1</a>');
                 html += '<div style="margin:.5rem 0;padding:.5rem;background:var(--bg2);border-radius:.5rem;"><strong>'+esc(m[1])+'</strong>'+rest+'</div>';
             }
         }
         else if (line.startsWith('- ')) {
             let t = line.substring(2);
             t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(conceptFile('$1'));event.preventDefault();" style="color:var(--ac);">$1</a>');
             html += '<div style="margin:.3rem 0;padding-left:1rem;color:var(--t2);">• '+t+'</div>';
         }
         else if (line.startsWith('---')) html += '<hr style="border:none;border-top:1px solid var(--bd);margin:1.5rem 0;">';
         else if (line.trim()) {
             let t = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(conceptFile('$1'));event.preventDefault();" style="color:var(--ac);">$1</a>');
             html += '<p style="margin:.3rem 0;color:var(--t2);">'+t+'</p>';
         }
     });
@@ -807,7 +810,7 @@ async function loadConceptPage(file) {
     detail.style.display = 'block';
     detail.innerHTML = '<p style="color:var(--tm)">載入中...</p>';
     try {
-        const res = await fetch(encodeURIComponent(file).replace(/%2F/g, '/'));
+        const res = await fetch(file);
         const md = await res.text();
         let html = '<button onclick="document.getElementById(\'kwikiDetail\').style.display=\'none\';document.getElementById(\'kwikiContent\').style.display=\'block\';" style="margin-bottom:1rem;padding:.4rem 1rem;border:1px solid var(--bd);background:var(--bg2);color:var(--tm);border-radius:.375rem;cursor:pointer;">← 返回索引</button>';
         html += renderMd(md);
