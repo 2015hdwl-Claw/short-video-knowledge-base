@@ -806,6 +806,13 @@ async function ghGet(path) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
 }
+// Safely decode GitHub base64 content (handles UTF-8 correctly)
+function ghDecode(base64) {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+}
 
 async function saveEdit() {
     if (!currentEdit) return;
@@ -816,7 +823,7 @@ async function saveEdit() {
         if (currentEdit.type === 'note') {
             const file = currentEdit.file;
             const remote = await ghGet(file);
-            const md = atob(remote.content);
+            const md = ghDecode(remote.content);
             const headerEnd = md.indexOf('---') + 4;
             const header = md.substring(0, headerEnd);
             const newContent = getVal('ed_content');
@@ -829,7 +836,7 @@ async function saveEdit() {
             renderNotes(allNotes);
         } else if (currentEdit.type === 'video') {
             const remote = await ghGet('short-videos.json');
-            const parsed = typeof remote.content === 'string' ? JSON.parse(atob(remote.content)) : remote;
+            const parsed = typeof remote.content === 'string' ? JSON.parse(ghDecode(remote.content)) : remote;
             const videos = Array.isArray(parsed) ? parsed : (parsed.videos || []);
             const idx = currentEdit.index;
             if (!videos[idx]) throw new Error('找不到該知識卡片（index ' + idx + '）');
@@ -875,7 +882,7 @@ async function deleteItem() {
             renderNotes(allNotes);
         } else if (currentEdit.type === 'video') {
             const remote = await ghGet('short-videos.json');
-            const parsed = typeof remote.content === 'string' ? JSON.parse(atob(remote.content)) : remote;
+            const parsed = typeof remote.content === 'string' ? JSON.parse(ghDecode(remote.content)) : remote;
             const videos = Array.isArray(parsed) ? parsed : (parsed.videos || []);
             const idx = currentEdit.index;
             const title = videos[idx].title;
