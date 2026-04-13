@@ -503,12 +503,17 @@ function filterNotes() {
 
 // === EDIT SYSTEM (GitHub API) ===
 const GH_API = 'https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/contents/';
-// Token stored in localStorage for security (set via /token endpoint or manually)
-function getGHToken() { return localStorage.getItem('gh_token') || ''; }
-function setGHToken(t) { localStorage.setItem('gh_token', t); }
+function getGHToken() { return localStorage.getItem('gh_kb_token') || ''; }
+function ensureGHToken() {
+    if (getGHToken()) return true;
+    const t = prompt('編輯功能需要 GitHub Token\n請輸入 Personal Access Token（只需輸入一次）：');
+    if (t) { localStorage.setItem('gh_kb_token', t); return true; }
+    return false;
+}
 let currentEdit = null; // { type: 'note'|'video', index, file }
 
 function openEdit(type, index, file) {
+    if (!ensureGHToken()) return;
     currentEdit = { type, index, file };
     const overlay = document.getElementById('editOverlay');
     const titleEl = document.getElementById('editTitle');
@@ -552,7 +557,7 @@ async function saveEdit() {
         const file = currentEdit.file;
         // Fetch current content
         try {
-            const res = await fetch(GH_API + file, { headers: { 'Authorization': 'token ' + GH_TOKEN } });
+            const res = await fetch(GH_API + file, { headers: { 'Authorization': 'token ' + getGHToken() } });
             const data = await res.json();
             const currentMd = atob(data.content);
             // Rebuild MD with new content
@@ -568,7 +573,7 @@ async function saveEdit() {
             // Push to GitHub
             const putRes = await fetch(GH_API + file, {
                 method: 'PUT',
-                headers: { 'Authorization': 'token ' + GH_TOKEN, 'Content-Type': 'application/json' },
+                headers: { 'Authorization': 'token ' + getGHToken(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: '📝 編輯筆記', content: btoa(unescape(encodeURIComponent(newMd))), sha: data.sha })
             });
             if (putRes.ok) {
@@ -591,7 +596,7 @@ async function saveEdit() {
     } else if (currentEdit.type === 'video') {
         // For videos, edit the JSON
         try {
-            const res = await fetch(GH_API + 'short-videos.json', { headers: { 'Authorization': 'token ' + GH_TOKEN } });
+            const res = await fetch(GH_API + 'short-videos.json', { headers: { 'Authorization': 'token ' + getGHToken() } });
             const data = await res.json();
             const videos = Array.isArray(data) ? data : (data.videos || []);
             const idx = currentEdit.index;
@@ -600,7 +605,7 @@ async function saveEdit() {
             const newJson = JSON.stringify({ videos }, null, 2);
             const putRes = await fetch(GH_API + 'short-videos.json', {
                 method: 'PUT',
-                headers: { 'Authorization': 'token ' + GH_TOKEN, 'Content-Type': 'application/json' },
+                headers: { 'Authorization': 'token ' + getGHToken(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: '✏️ 編輯知識卡片：' + videos[idx].title.substring(0, 20), content: btoa(unescape(encodeURIComponent(newJson))), sha: data.sha || JSON.parse(atob(data.content)).sha })
             });
             if (putRes.ok) {
