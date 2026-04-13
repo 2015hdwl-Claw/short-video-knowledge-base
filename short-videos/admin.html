@@ -8,7 +8,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #475569; }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { font-size: 1.5rem; color: #f8fafc; }
         .header .stats { color: #94a3b8; margin-top: 0.3rem; font-size: 0.9rem; }
         .tabs { display: flex; gap: 0; border-bottom: 1px solid #334155; background: #1e293b; }
@@ -29,6 +29,8 @@
         .badge-source { background: #1e3a5f; color: #60a5fa; }
         .badge-cat { background: #3b1f4a; color: #c084fc; }
         .badge-date { background: #1f3329; color: #4ade80; }
+        .badge-concept { background: #3b2f1a; color: #fbbf24; cursor: pointer; }
+        .badge-concept:hover { background: #5a4520; }
         .card .points { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
         .card .points li { margin-bottom: 0.25rem; }
         .card .note { margin-top: 0.5rem; font-size: 0.85rem; color: #fbbf24; font-style: italic; }
@@ -47,7 +49,6 @@
         .wiki-item { padding: 0.4rem 0.6rem; color: #94a3b8; cursor: pointer; border-radius: 0.375rem; font-size: 0.9rem; transition: all 0.15s; }
         .wiki-item:hover { background: #334155; color: #e2e8f0; }
         .wiki-item.active { background: #1e3a5f; color: #60a5fa; }
-        .wiki-item .count { font-size: 0.75rem; color: #64748b; margin-left: 0.3rem; }
         .wiki-main { flex: 1; overflow-y: auto; padding: 2rem; }
         .wiki-main h1 { font-size: 1.5rem; color: #f8fafc; margin-bottom: 0.5rem; }
         .wiki-main h2 { font-size: 1.2rem; color: #c084fc; margin: 1.5rem 0 0.75rem; }
@@ -68,12 +69,23 @@
         .wiki-placeholder { text-align: center; padding: 4rem; color: #475569; }
         .wiki-placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
         .wiki-search { width: 100%; margin-bottom: 1rem; }
+        /* Related videos in wiki */
+        .related-video-card { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.15s; }
+        .related-video-card:hover { border-color: #3b82f6; background: #1e293b; }
+        .related-video-card .rv-title { font-size: 0.9rem; color: #f8fafc; margin-bottom: 0.25rem; }
+        .related-video-card .rv-meta { font-size: 0.75rem; color: #64748b; }
+        .back-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #60a5fa; cursor: pointer; font-size: 0.9rem; margin-bottom: 1rem; }
+        .back-link:hover { text-decoration: underline; }
+        .concept-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.75rem; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🎬 短影音知識庫</h1>
-        <div class="stats" id="stats"></div>
+        <div>
+            <h1>🎬 短影音知識庫</h1>
+            <div class="stats" id="stats"></div>
+        </div>
+        <div id="breadcrumb" style="font-size:0.85rem;color:#64748b;"></div>
     </div>
     <div class="tabs">
         <div class="tab active" onclick="switchTab('videos')">📹 短影音列表</div>
@@ -122,6 +134,19 @@
     </div>
 
     <script>
+// === GLOBALS ===
+let DATA = [];
+let wikiLoaded = false;
+let wikiPages = [];
+let notesLoaded = false;
+let allNotes = [];
+const WIKI_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/wiki/';
+
+// === CONCEPT MAPPING: tag/category → wiki page ===
+// Build a map of which tags/categories link to which wiki concepts
+let conceptMap = {}; // concept_name → array of matching data indices
+let tagToConcept = {}; // tag_string → concept_name
+
 // === TAB SWITCHING ===
 function switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -132,13 +157,78 @@ function switchTab(tab) {
     if (tab === 'notes' && !notesLoaded) loadNotes();
 }
 
-// === VIDEOS TAB ===
-let DATA = [];
+// === ESCAPE ===
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// === BUILD CONCEPT MAP ===
+function buildConceptMap() {
+    conceptMap = {};
+    tagToConcept = {};
+    wikiPages.forEach(p => {
+        const name = p.name;
+        const related = findRelatedVideos(name);
+        conceptMap[name] = related;
+        related.forEach(idx => {
+            const d = DATA[idx];
+            // Map tags and category
+            (d.tags || []).forEach(t => {
+                if (t.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(t.toLowerCase())) {
+                    tagToConcept[t] = name;
+                }
+            });
+            if (d.category && (d.category.toLowerCase().includes(name.toLowerCase()) || name.toLowerCase().includes(d.category.toLowerCase()))) {
+                tagToConcept[d.category] = name;
+            }
+        });
+    });
+}
+
+function findRelatedVideos(conceptName) {
+    const cn = conceptName.toLowerCase();
+    const indices = [];
+    DATA.forEach((d, i) => {
+        let score = 0;
+        // Check title
+        if (d.title.toLowerCase().includes(cn)) score += 3;
+        // Check tags
+        (d.tags || []).forEach(t => {
+            if (t.toLowerCase().includes(cn) || cn.includes(t.toLowerCase())) score += 2;
+        });
+        // Check category
+        if (d.category && d.category.toLowerCase().includes(cn)) score += 2;
+        // Check source
+        if (d.source && d.source.toLowerCase().includes(cn)) score += 1;
+        // Check core_points
+        if ((d.core_points || '').toLowerCase().includes(cn)) score += 1;
+        if (score > 0) indices.push(i);
+    });
+    return indices;
+}
+
+function getConceptsForVideo(idx) {
+    const d = DATA[idx];
+    const concepts = new Set();
+    // Direct match from wikiPages
+    wikiPages.forEach(p => {
+        const name = p.name;
+        const cn = name.toLowerCase();
+        if (d.title.toLowerCase().includes(cn)) concepts.add(name);
+        (d.tags || []).forEach(t => {
+            if (t.toLowerCase().includes(cn) || cn.includes(t.toLowerCase())) concepts.add(name);
+        });
+        if (d.category && d.category.toLowerCase().includes(cn)) concepts.add(name);
+    });
+    return [...concepts];
+}
+
+// === LOAD DATA ===
 fetch("short-videos.json").then(r=>r.json()).then(d=>{
-    DATA=Array.isArray(d)?d:(d.videos||[]);
+    DATA = Array.isArray(d) ? d : (d.videos || []);
+    document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 ${wikiPages.length || '?'} 個概念`;
     render();
-    document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 知識圖譜模式`;
 });
+
+// === VIDEOS TAB ===
 const categories = [];
 document.getElementById('catFilter').addEventListener('change', render);
 document.getElementById('sortOrder').addEventListener('change', render);
@@ -152,6 +242,7 @@ function render() {
             document.getElementById('catFilter').appendChild(o);
             categories.push(c);
         });
+        buildConceptMap();
     }
     const q = document.getElementById('search').value.toLowerCase();
     const cat = document.getElementById('catFilter').value;
@@ -166,25 +257,34 @@ function render() {
     else if (sort === 'title') filtered.sort((a,b) => a.title.localeCompare(b.title));
     const grid = document.getElementById('grid');
     if (!filtered.length) { grid.innerHTML = '<div class="empty">沒有找到匹配的卡片</div>'; return; }
-    grid.innerHTML = filtered.map((d, i) => {
+    grid.innerHTML = filtered.map(d => {
+        const idx = DATA.indexOf(d);
         const points = (d.core_points || '').split('\n').filter(p => p.trim()).slice(0, 3);
         const ptsHtml = points.length ? '<ul class="points">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : '';
         const noteHtml = d.note ? '<div class="note">📝 ' + d.note + '</div>' : '';
-        return `<div class="card" onclick="openModal(${DATA.indexOf(d)})">
+        // Show related concepts as clickable badges
+        const concepts = getConceptsForVideo(idx);
+        const conceptBadges = concepts.length ? '<div class="concept-tags">' + concepts.map(c =>
+            `<span class="badge badge-concept" onclick="event.stopPropagation();goToConcept('${esc(c)}')">🧠 ${esc(c)}</span>`
+        ).join('') + '</div>' : '';
+        return `<div class="card" onclick="openModal(${idx})">
             <div class="title">${esc(d.title)}</div>
             <div class="meta">
                 <span class="badge badge-source">${esc(d.source)}</span>
                 <span class="badge badge-cat">${esc(d.category)}</span>
                 <span class="badge badge-date">${d.date}</span>
             </div>
-            ${ptsHtml}${noteHtml}
+            ${ptsHtml}${conceptBadges}${noteHtml}
         </div>`;
     }).join('');
 }
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function openModal(i) {
-    const d = DATA[i];
+
+function openModal(idx) {
+    const d = DATA[idx];
     const points = (d.core_points || '').split('\n').filter(p => p.trim());
+    const concepts = getConceptsForVideo(idx);
+    const conceptLinks = concepts.length ? '<div style="margin-top:1rem;"><span style="color:#64748b;font-size:0.85rem;">相關概念：</span>' +
+        concepts.map(c => `<span class="badge badge-concept" onclick="document.getElementById('modal').classList.remove('active');goToConcept('${esc(c)}')" style="margin-right:0.3rem;cursor:pointer;">🧠 ${esc(c)}</span>`).join('') + '</div>' : '';
     document.getElementById('modalBody').innerHTML = `
         <h2>${esc(d.title)}</h2>
         <div class="meta" style="margin-bottom:1rem">
@@ -195,16 +295,21 @@ function openModal(i) {
         ${d.url ? '<p style="margin-bottom:1rem"><a href="' + d.url + '" target="_blank" style="color:#60a5fa">🔗 原始連結</a></p>' : ''}
         ${points.length ? '<h3 style="margin:1rem 0 0.5rem">📌 核心重點</h3><ul class="points" style="list-style:decimal;padding-left:1.5rem">' + points.map(p => '<li>' + esc(p.replace(/^\d+\.\s*/, '')) + '</li>').join('') + '</ul>' : ''}
         ${d.note ? '<p style="margin-top:1rem;color:#fbbf24">📝 ' + esc(d.note) + '</p>' : ''}
+        ${conceptLinks}
     `;
     document.getElementById('modal').classList.add('active');
+    document.getElementById('breadcrumb').innerHTML = `📹 短影音列表 → ${esc(d.title.substring(0,20))}...`;
 }
-document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('active'); });
+document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) { e.currentTarget.classList.remove('active'); document.getElementById('breadcrumb').innerHTML = ''; } });
+
+// === GO TO CONCEPT (from video tab) ===
+function goToConcept(name) {
+    switchTab('wiki');
+    // Wait for wiki to load if needed
+    setTimeout(() => loadWikiPage(name), wikiLoaded ? 0 : 500);
+}
 
 // === WIKI TAB ===
-const WIKI_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/wiki/';
-let wikiLoaded = false;
-let wikiPages = [];
-
 function loadWikiIndex() {
     wikiLoaded = true;
     fetch(WIKI_BASE + 'index.md').then(r => r.text()).then(md => {
@@ -227,7 +332,9 @@ function loadWikiIndex() {
             }
         });
         renderWikiSidebar(sections);
-    }).catch(e => {
+        buildConceptMap();
+        document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 ${wikiPages.length} 個概念`;
+    }).catch(() => {
         document.getElementById('wikiIndex').innerHTML = '<p style="color:#f87171">載入失敗</p>';
     });
 }
@@ -240,7 +347,8 @@ function renderWikiSidebar(sections) {
         if (!items.length) continue;
         html += `<h3>${icons[section] || ''} ${section}（${items.length}）</h3>`;
         items.forEach(name => {
-            html += `<div class="wiki-item" onclick="loadWikiPage('${name}')">${name}</div>`;
+            const count = findRelatedVideos(name).length;
+            html += `<div class="wiki-item" onclick="loadWikiPage('${esc(name)}')">${esc(name)}<span class="count">(${count})</span></div>`;
         });
     }
     container.innerHTML = html;
@@ -257,39 +365,75 @@ function loadWikiPage(name) {
     const page = wikiPages.find(p => p.name === name);
     if (!page) return;
     document.querySelectorAll('.wiki-item').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.wiki-item').forEach(el => { if (el.textContent === name) el.classList.add('active'); });
-    
+    document.querySelectorAll('.wiki-item').forEach(el => { if (el.textContent.startsWith(name)) el.classList.add('active'); });
+    document.getElementById('breadcrumb').innerHTML = `🧠 知識圖譜 → ${esc(name)}`;
     document.getElementById('wikiMain').innerHTML = '<div class="wiki-placeholder"><p>⏳ 載入中...</p></div>';
-    
+
     fetch(WIKI_BASE + page.file).then(r => r.text()).then(md => {
-        // Convert [[links]] to clickable
-        md = md.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadWikiPage(\'$1\');return false;">$1</a>');
-        // Render markdown
-        document.getElementById('wikiMain').innerHTML = marked.parse(md);
+        // Convert [[links]] to clickable wiki navigation
+        md = md.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadWikiPage(\'$1\');return false;">🧠 $1</a>');
+        // Render the wiki markdown content
+        const htmlContent = marked.parse(md);
+        // Find related videos and inject them
+        const related = findRelatedVideos(name);
+        let relatedHtml = '';
+        if (related.length > 0) {
+            relatedHtml = '<h2 style="color:#fbbf24;margin-top:2rem;">📹 相關知識卡片（' + related.length + '）</h2>';
+            relatedHtml += '<p style="color:#64748b;font-size:0.85rem;margin-bottom:0.75rem;">點擊卡片查看完整內容</p>';
+            related.slice(0, 20).forEach(idx => {
+                const d = DATA[idx];
+                const pts = (d.core_points || '').split('\n').filter(p => p.trim()).slice(0, 2);
+                relatedHtml += `<div class="related-video-card" onclick="openVideoFromWiki(${idx})">
+                    <div class="rv-title">${esc(d.title)}</div>
+                    <div class="rv-meta">${esc(d.source)} · ${esc(d.category)} · ${d.date}</div>
+                    ${pts.length ? '<div style="font-size:0.8rem;color:#94a3b8;margin-top:0.3rem;">' + pts.map(p => '• ' + esc(p.replace(/^\d+\.\s*/, '').substring(0, 60))).join('<br>') + '</div>' : ''}
+                </div>`;
+            });
+        }
+        // Find related concepts (co-occurring tags)
+        const relatedConcepts = findRelatedConcepts(name);
+        let conceptHtml = '';
+        if (relatedConcepts.length > 0) {
+            conceptHtml = '<h2 style="color:#c084fc;margin-top:2rem;">🔗 相關概念</h2>';
+            conceptHtml += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+            relatedConcepts.forEach(c => {
+                conceptHtml += `<span class="badge badge-concept" onclick="loadWikiPage('${esc(c)}')" style="cursor:pointer;font-size:0.85rem;padding:0.3rem 0.8rem;">🧠 ${esc(c)}</span>`;
+            });
+            conceptHtml += '</div>';
+        }
+        document.getElementById('wikiMain').innerHTML = htmlContent + relatedHtml + conceptHtml;
     }).catch(() => {
         document.getElementById('wikiMain').innerHTML = '<div class="wiki-placeholder"><p>❌ 載入失敗</p></div>';
     });
 }
 
-// === NOTES TAB ===
-let notesLoaded = false;
-let allNotes = [];
-const NOTES_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/raw/notes/';
+function findRelatedConcepts(conceptName) {
+    // Find other concepts that share related videos
+    const myVideos = new Set(findRelatedVideos(conceptName));
+    const scores = {};
+    wikiPages.forEach(p => {
+        if (p.name === conceptName) return;
+        const theirVideos = findRelatedVideos(p.name);
+        const overlap = theirVideos.filter(i => myVideos.has(i)).length;
+        if (overlap >= 1) scores[p.name] = overlap;
+    });
+    return Object.entries(scores).sort((a,b) => b[1] - a[1]).slice(0, 8).map(([name]) => name);
+}
 
+// Open video from wiki → switch to video tab and show modal
+function openVideoFromWiki(idx) {
+    switchTab('videos');
+    setTimeout(() => openModal(idx), 100);
+}
+
+// === NOTES TAB ===
 function loadNotes() {
     notesLoaded = true;
-    // Fetch notes index from notes.json
     fetch('notes.json').then(r => r.json()).then(notes => {
         allNotes = notes;
         renderNotes(notes);
     }).catch(() => {
-        // Fallback: try to list from raw/notes via index
-        fetch(NOTES_BASE + 'notes.json').then(r => r.json()).then(notes => {
-            allNotes = notes;
-            renderNotes(notes);
-        }).catch(() => {
-            document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下：xxx」即可新增。</div>';
-        });
+        document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下：xxx」即可新增。</div>';
     });
 }
 
@@ -299,23 +443,22 @@ function renderNotes(notes) {
         return;
     }
     notes.sort((a,b) => b.date.localeCompare(a.date));
-    const container = document.getElementById('notesList');
-    container.innerHTML = notes.map(n => `
+    document.getElementById('notesList').innerHTML = notes.map(n => `
         <div style="background:#1e293b;border:1px solid #334155;border-radius:0.75rem;padding:1.25rem;margin-bottom:1rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
                 <span style="font-size:0.75rem;color:#4ade80;">📅 ${n.date} ${n.time || ''}</span>
                 <span style="font-size:0.75rem;color:#64748b;">${n.source || ''}</span>
             </div>
             <p style="color:#e2e8f0;line-height:1.6;">${esc(n.content || n.title || '')}</p>
-            ${n.tags && n.tags.length ? '<div style="margin-top:0.5rem;">' + n.tags.map(t => `<span style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:9999px;background:#1e3a5f;color:#60a5fa;margin-right:0.3rem;">${esc(t)}</span>`).join('') + '</div>' : ''}
+            ${n.tags && n.tags.length ? '<div style="margin-top:0.5rem;">' + n.tags.map(t => `<span class="badge badge-concept" style="font-size:0.75rem;padding:0.15rem 0.5rem;background:#1e3a5f;color:#60a5fa;margin-right:0.3rem;">${esc(t)}</span>`).join('') + '</div>' : ''}
         </div>
     `).join('');
 }
 
 function filterNotes() {
     const q = document.getElementById('noteSearch').value.toLowerCase();
-    const filtered = allNotes.filter(n => 
-        (n.content || n.title || '').toLowerCase().includes(q) || 
+    const filtered = allNotes.filter(n =>
+        (n.content || n.title || '').toLowerCase().includes(q) ||
         (n.tags || []).some(t => t.toLowerCase().includes(q))
     );
     renderNotes(filtered);
