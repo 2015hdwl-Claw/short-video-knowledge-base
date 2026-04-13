@@ -4,12 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短影音知識庫 Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 2rem; border-bottom: 1px solid #475569; }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 1.5rem 2rem; border-bottom: 1px solid #475569; }
         .header h1 { font-size: 1.5rem; color: #f8fafc; }
-        .header .stats { color: #94a3b8; margin-top: 0.5rem; font-size: 0.9rem; }
+        .header .stats { color: #94a3b8; margin-top: 0.3rem; font-size: 0.9rem; }
+        .tabs { display: flex; gap: 0; border-bottom: 1px solid #334155; background: #1e293b; }
+        .tab { padding: 0.75rem 1.5rem; cursor: pointer; color: #94a3b8; font-size: 0.95rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab:hover { color: #e2e8f0; }
+        .tab.active { color: #60a5fa; border-bottom-color: #3b82f6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .controls { padding: 1rem 2rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
         .controls input, .controls select { background: #1e293b; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; }
         .controls input:focus, .controls select:focus { outline: none; border-color: #3b82f6; }
@@ -32,6 +39,35 @@
         .modal-content .close { float: right; cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
         .modal-content .close:hover { color: #f8fafc; }
         .empty { text-align: center; padding: 3rem; color: #64748b; }
+        /* Wiki styles */
+        .wiki-container { display: flex; height: calc(100vh - 130px); }
+        .wiki-sidebar { width: 280px; min-width: 280px; background: #1e293b; border-right: 1px solid #334155; overflow-y: auto; padding: 1rem; }
+        .wiki-sidebar h3 { font-size: 0.85rem; color: #64748b; text-transform: uppercase; margin: 1rem 0 0.5rem; letter-spacing: 0.05em; }
+        .wiki-sidebar h3:first-child { margin-top: 0; }
+        .wiki-item { padding: 0.4rem 0.6rem; color: #94a3b8; cursor: pointer; border-radius: 0.375rem; font-size: 0.9rem; transition: all 0.15s; }
+        .wiki-item:hover { background: #334155; color: #e2e8f0; }
+        .wiki-item.active { background: #1e3a5f; color: #60a5fa; }
+        .wiki-item .count { font-size: 0.75rem; color: #64748b; margin-left: 0.3rem; }
+        .wiki-main { flex: 1; overflow-y: auto; padding: 2rem; }
+        .wiki-main h1 { font-size: 1.5rem; color: #f8fafc; margin-bottom: 0.5rem; }
+        .wiki-main h2 { font-size: 1.2rem; color: #c084fc; margin: 1.5rem 0 0.75rem; }
+        .wiki-main h3 { font-size: 1rem; color: #60a5fa; margin: 1rem 0 0.5rem; }
+        .wiki-main p { color: #cbd5e1; line-height: 1.8; margin-bottom: 0.75rem; }
+        .wiki-main ul, .wiki-main ol { color: #cbd5e1; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+        .wiki-main li { line-height: 1.8; margin-bottom: 0.25rem; }
+        .wiki-main blockquote { border-left: 3px solid #3b82f6; padding: 0.5rem 1rem; margin: 1rem 0; background: #1e293b; border-radius: 0 0.5rem 0.5rem 0; }
+        .wiki-main blockquote p { color: #94a3b8; }
+        .wiki-main hr { border: none; border-top: 1px solid #334155; margin: 1.5rem 0; }
+        .wiki-main a { color: #60a5fa; text-decoration: none; }
+        .wiki-main a:hover { text-decoration: underline; }
+        .wiki-main table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        .wiki-main th, .wiki-main td { padding: 0.5rem 0.75rem; border: 1px solid #334155; text-align: left; }
+        .wiki-main th { background: #1e293b; color: #94a3b8; font-weight: 600; }
+        .wiki-main td { color: #cbd5e1; }
+        .wiki-main code { background: #334155; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.85em; color: #f0abfc; }
+        .wiki-placeholder { text-align: center; padding: 4rem; color: #475569; }
+        .wiki-placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .wiki-search { width: 100%; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
@@ -39,28 +75,76 @@
         <h1>🎬 短影音知識庫</h1>
         <div class="stats" id="stats"></div>
     </div>
-    <div class="controls">
-        <input type="text" id="search" placeholder="🔍 搜尋標題、作者、內容..." style="flex:1;min-width:200px">
-        <select id="catFilter"><option value="">所有分類</option></select>
-        <select id="sortOrder"><option value="date-desc">最新優先</option><option value="date-asc">最舊優先</option><option value="title">標題排序</option></select>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('videos')">📹 短影音列表</div>
+        <div class="tab" onclick="switchTab('wiki')">🧠 知識圖譜 Wiki</div>
     </div>
-    <div class="grid" id="grid"></div>
-    <div class="modal" id="modal">
-        <div class="modal-content">
-            <span class="close" onclick="document.getElementById('modal').classList.remove('active')">✕</span>
-            <div id="modalBody"></div>
+
+    <!-- Tab 1: Videos -->
+    <div class="tab-content active" id="tab-videos">
+        <div class="controls">
+            <input type="text" id="search" placeholder="🔍 搜尋標題、作者、內容..." style="flex:1;min-width:200px">
+            <select id="catFilter"><option value="">所有分類</option></select>
+            <select id="sortOrder"><option value="date-desc">最新優先</option><option value="date-asc">最舊優先</option><option value="title">標題排序</option></select>
+        </div>
+        <div class="grid" id="grid"></div>
+        <div class="modal" id="modal">
+            <div class="modal-content">
+                <span class="close" onclick="document.getElementById('modal').classList.remove('active')">✕</span>
+                <div id="modalBody"></div>
+            </div>
         </div>
     </div>
+
+    <!-- Tab 2: Wiki -->
+    <div class="tab-content" id="tab-wiki">
+        <div class="wiki-container">
+            <div class="wiki-sidebar" id="wikiSidebar">
+                <input type="text" class="wiki-search" id="wikiSearch" placeholder="🔍 搜尋概念...">
+                <div id="wikiIndex"></div>
+            </div>
+            <div class="wiki-main" id="wikiMain">
+                <div class="wiki-placeholder">
+                    <div class="icon">📚</div>
+                    <p>從左側選擇一個概念或實體來查看知識頁面</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-let DATA = []; fetch("short-videos.json").then(r=>r.json()).then(d=>{DATA=Array.isArray(d)?d:(d.videos||[]);render();});
-const categories = [...new Set(DATA.map(d => d.category))].sort();
-const catFilter = document.getElementById('catFilter');
-categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catFilter.appendChild(o); });
-document.getElementById('stats').textContent = `共 ${DATA.length} 筆知識卡片`;
+// === TAB SWITCHING ===
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'wiki' && !wikiLoaded) loadWikiIndex();
+}
+
+// === VIDEOS TAB ===
+let DATA = [];
+fetch("short-videos.json").then(r=>r.json()).then(d=>{
+    DATA=Array.isArray(d)?d:(d.videos||[]);
+    render();
+    document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 知識圖譜模式`;
+});
+const categories = [];
+document.getElementById('catFilter').addEventListener('change', render);
+document.getElementById('sortOrder').addEventListener('change', render);
+document.getElementById('search').addEventListener('input', render);
 
 function render() {
+    if (!DATA.length) return;
+    if (!categories.length) {
+        [...new Set(DATA.map(d => d.category))].sort().forEach(c => {
+            const o = document.createElement('option'); o.value = c; o.textContent = c;
+            document.getElementById('catFilter').appendChild(o);
+            categories.push(c);
+        });
+    }
     const q = document.getElementById('search').value.toLowerCase();
-    const cat = catFilter.value;
+    const cat = document.getElementById('catFilter').value;
     const sort = document.getElementById('sortOrder').value;
     let filtered = DATA.filter(d => {
         if (cat && d.category !== cat) return false;
@@ -70,7 +154,6 @@ function render() {
     if (sort === 'date-desc') filtered.sort((a,b) => b.date.localeCompare(a.date));
     else if (sort === 'date-asc') filtered.sort((a,b) => a.date.localeCompare(b.date));
     else if (sort === 'title') filtered.sort((a,b) => a.title.localeCompare(b.title));
-
     const grid = document.getElementById('grid');
     if (!filtered.length) { grid.innerHTML = '<div class="empty">沒有找到匹配的卡片</div>'; return; }
     grid.innerHTML = filtered.map((d, i) => {
@@ -78,38 +161,105 @@ function render() {
         const ptsHtml = points.length ? '<ul class="points">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : '';
         const noteHtml = d.note ? '<div class="note">📝 ' + d.note + '</div>' : '';
         return `<div class="card" onclick="openModal(${DATA.indexOf(d)})">
-            <div class="title">${d.title}</div>
+            <div class="title">${esc(d.title)}</div>
             <div class="meta">
-                <span class="badge badge-source">${d.source}</span>
-                <span class="badge badge-cat">${d.category}</span>
+                <span class="badge badge-source">${esc(d.source)}</span>
+                <span class="badge badge-cat">${esc(d.category)}</span>
                 <span class="badge badge-date">${d.date}</span>
             </div>
             ${ptsHtml}${noteHtml}
         </div>`;
     }).join('');
 }
-
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function openModal(i) {
     const d = DATA[i];
     const points = (d.core_points || '').split('\n').filter(p => p.trim());
     document.getElementById('modalBody').innerHTML = `
-        <h2>${d.title}</h2>
+        <h2>${esc(d.title)}</h2>
         <div class="meta" style="margin-bottom:1rem">
-            <span class="badge badge-source">${d.source}</span>
-            <span class="badge badge-cat">${d.category}</span>
+            <span class="badge badge-source">${esc(d.source)}</span>
+            <span class="badge badge-cat">${esc(d.category)}</span>
             <span class="badge badge-date">${d.date}</span>
         </div>
         ${d.url ? '<p style="margin-bottom:1rem"><a href="' + d.url + '" target="_blank" style="color:#60a5fa">🔗 原始連結</a></p>' : ''}
-        ${points.length ? '<h3 style="margin:1rem 0 0.5rem">📌 核心重點</h3><ul class="points" style="list-style:decimal;padding-left:1.5rem">' + points.map(p => '<li>' + p.replace(/^\d+\.\s*/, '') + '</li>').join('') + '</ul>' : ''}
-        ${d.note ? '<p style="margin-top:1rem;color:#fbbf24">📝 ' + d.note + '</p>' : ''}
+        ${points.length ? '<h3 style="margin:1rem 0 0.5rem">📌 核心重點</h3><ul class="points" style="list-style:decimal;padding-left:1.5rem">' + points.map(p => '<li>' + esc(p.replace(/^\d+\.\s*/, '')) + '</li>').join('') + '</ul>' : ''}
+        ${d.note ? '<p style="margin-top:1rem;color:#fbbf24">📝 ' + esc(d.note) + '</p>' : ''}
     `;
     document.getElementById('modal').classList.add('active');
 }
 document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('active'); });
-document.getElementById('search').addEventListener('input', render);
-catFilter.addEventListener('change', render);
-document.getElementById('sortOrder').addEventListener('change', render);
-render();
+
+// === WIKI TAB ===
+const WIKI_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/wiki/';
+let wikiLoaded = false;
+let wikiPages = [];
+
+function loadWikiIndex() {
+    wikiLoaded = true;
+    fetch(WIKI_BASE + 'index.md').then(r => r.text()).then(md => {
+        wikiPages = [];
+        const sections = { '概念': [], '實體': [], '比較': [], '綜合': [] };
+        let currentSection = '';
+        md.split('\n').forEach(line => {
+            const m = line.match(/^## (.+)/);
+            if (m) { currentSection = m[1]; return; }
+            const link = line.match(/^- \[\[(.+?)\]\]/);
+            if (link) {
+                const name = link[1];
+                let subdir = '';
+                if (currentSection === '概念') subdir = 'concepts/';
+                else if (currentSection === '實體') subdir = 'entities/';
+                else if (currentSection === '比較') subdir = 'comparisons/';
+                else if (currentSection === '綜合') subdir = 'syntheses/';
+                wikiPages.push({ name, subdir, section: currentSection, file: subdir + name + '.md' });
+                if (sections[currentSection]) sections[currentSection].push(name);
+            }
+        });
+        renderWikiSidebar(sections);
+    }).catch(e => {
+        document.getElementById('wikiIndex').innerHTML = '<p style="color:#f87171">載入失敗</p>';
+    });
+}
+
+function renderWikiSidebar(sections) {
+    const container = document.getElementById('wikiIndex');
+    const icons = { '概念': '💡', '實體': '🔧', '比較': '⚖️', '綜合': '📊' };
+    let html = '';
+    for (const [section, items] of Object.entries(sections)) {
+        if (!items.length) continue;
+        html += `<h3>${icons[section] || ''} ${section}（${items.length}）</h3>`;
+        items.forEach(name => {
+            html += `<div class="wiki-item" onclick="loadWikiPage('${name}')">${name}</div>`;
+        });
+    }
+    container.innerHTML = html;
+}
+
+document.getElementById('wikiSearch').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.wiki-item').forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+});
+
+function loadWikiPage(name) {
+    const page = wikiPages.find(p => p.name === name);
+    if (!page) return;
+    document.querySelectorAll('.wiki-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.wiki-item').forEach(el => { if (el.textContent === name) el.classList.add('active'); });
+    
+    document.getElementById('wikiMain').innerHTML = '<div class="wiki-placeholder"><p>⏳ 載入中...</p></div>';
+    
+    fetch(WIKI_BASE + page.file).then(r => r.text()).then(md => {
+        // Convert [[links]] to clickable
+        md = md.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadWikiPage(\'$1\');return false;">$1</a>');
+        // Render markdown
+        document.getElementById('wikiMain').innerHTML = marked.parse(md);
+    }).catch(() => {
+        document.getElementById('wikiMain').innerHTML = '<div class="wiki-placeholder"><p>❌ 載入失敗</p></div>';
+    });
+}
     </script>
 </body>
 </html>
