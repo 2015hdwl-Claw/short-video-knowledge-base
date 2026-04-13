@@ -1,6 +1,24 @@
 {
   "videos": [
     {
+      "title": "OPC CLI 開源工具 — 剪口播、特效字幕、語音合成一鍵搞定",
+      "date": "2026-04-13",
+      "source": "抖音 - 小天fotos",
+      "url": "https://v.douyin.com/3ZmMhBaxz-4/",
+      "url_status": "need_cookie",
+      "tags": [
+        "AI",
+        "科技",
+        "創業"
+      ],
+      "category": "AI",
+      "core_points": "1. OPC CLI 是一個開源命令行工具，專為短影音創作者設計\n2. 功能包括：自動剪輯口播影片、生成特效字幕、語音合成（TTS）\n3. 一鍵流程：輸入腳本 → 自動生成帶字幕的口播影片\n4. 適合 OPC（一人公司）創作者，降低短影音製作門檻\n5. 開源免費，可自行部署和客製化",
+      "advice": "OPC 創作者可以搭配使用，大幅減少影片製作時間",
+      "audience": "短影音創作者、OPC 一人公司、自媒體運營者",
+      "note": "",
+      "priority": "normal"
+    },
+    {
       "title": "花兩萬買廢棄項目，年入兩千萬 — 低成本創業實戰",
       "date": "2026-04-13",
       "source": "抖音 - 秦刚创业访谈",
