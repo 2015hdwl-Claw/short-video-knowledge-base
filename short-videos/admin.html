@@ -340,14 +340,20 @@ function openModal(idx) {
         concepts.map(c => `<span class="badge badge-concept" onclick="document.getElementById('modal').classList.remove('active');goToConcept('${esc(c)}')" style="margin-right:0.3rem;cursor:pointer;">🧠 ${esc(c)}</span>`).join('') + '</div>' : '';
     document.getElementById('modalBody').innerHTML = `
         <h2>${esc(d.title)}</h2>
-        <div class="meta" style="margin-bottom:1rem">
-            <span class="badge badge-source">${esc(d.source)}</span>
-            <span class="badge badge-cat">${esc(d.category)}</span>
-            <span class="badge badge-date">${d.date}</span>
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+            <div class="meta">
+                <span class="badge badge-source">${esc(d.source)}</span>
+                <span class="badge badge-cat">${esc(d.category)}</span>
+                <span class="badge badge-date">${d.date}</span>
+            </div>
+            <span class="edit-icon" onclick="document.getElementById('modal').classList.remove('active');openEdit('video',${idx})" title="編輯" style="font-size:1rem;">✏️ 編輯</span>
         </div>
         ${d.url ? '<p style="margin-bottom:1rem"><a href="' + d.url + '" target="_blank" style="color:#60a5fa">🔗 原始連結</a></p>' : ''}
         ${points.length ? '<h3 style="margin:1rem 0 0.5rem">📌 核心重點</h3><ul class="points" style="list-style:decimal;padding-left:1.5rem">' + points.map(p => '<li>' + esc(p.replace(/^\d+\.\s*/, '')) + '</li>').join('') + '</ul>' : ''}
+        ${(d.advice||'') ? '<h3 style="margin:1rem 0 0.5rem">💡 實踐建議</h3><p style="color:#cbd5e1;line-height:1.8;">' + esc(d.advice) + '</p>' : ''}
+        ${(d.audience||'') ? '<h3 style="margin:1rem 0 0.5rem">🎯 適合對象</h3><p style="color:#cbd5e1;">' + esc(d.audience) + '</p>' : ''}
         ${d.note ? '<p style="margin-top:1rem;color:#fbbf24">📝 ' + esc(d.note) + '</p>' : ''}
+        ${(d.personal_insight||'') ? '<div style="margin-top:1rem;padding:0.75rem;background:#1a2744;border-radius:0.5rem;border-left:3px solid #fbbf24;"><h4 style="color:#fbbf24;margin-bottom:0.25rem;">💭 個人觀點</h4><p style="color:#e2e8f0;line-height:1.8;">' + esc(d.personal_insight) + '</p></div>' : ''}
         ${conceptLinks}
     `;
     document.getElementById('modal').classList.add('active');
@@ -706,7 +712,8 @@ function openEdit(type, index, file) {
             + makeField('核心重點', 'ed_points', d.core_points, 'textarea')
             + makeField('實踐建議', 'ed_advice', d.advice || '', 'textarea')
             + makeField('適合對象', 'ed_audience', d.audience || '')
-            + makeField('備註', 'ed_note', d.note || '', 'textarea');
+            + makeField('備註', 'ed_note', d.note || '', 'textarea')
+            + makeField('個人觀點', 'ed_insight', d.personal_insight || '', 'textarea');
     }
     document.getElementById('editOverlay').classList.add('active');
 }
@@ -771,6 +778,7 @@ async function saveEdit() {
             videos[idx].advice = getVal('ed_advice');
             videos[idx].audience = getVal('ed_audience');
             videos[idx].note = getVal('ed_note');
+            videos[idx].personal_insight = getVal('ed_insight');
             const newJson = JSON.stringify({ videos }, null, 2);
             await ghPut('short-videos.json', { message: '✏️ 編輯知識卡片', content: btoa(unescape(encodeURIComponent(newJson))), sha: remote.sha });
             Object.assign(DATA[idx], videos[idx]);
