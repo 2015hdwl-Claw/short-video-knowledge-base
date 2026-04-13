@@ -78,6 +78,7 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab('videos')">📹 短影音列表</div>
         <div class="tab" onclick="switchTab('wiki')">🧠 知識圖譜 Wiki</div>
+        <div class="tab" onclick="switchTab('notes')">📝 隨身筆記</div>
     </div>
 
     <!-- Tab 1: Videos -->
@@ -112,6 +113,14 @@
         </div>
     </div>
 
+    <!-- Tab 3: Notes -->
+    <div class="tab-content" id="tab-notes">
+        <div class="controls">
+            <input type="text" id="noteSearch" placeholder="🔍 搜尋筆記內容..." style="flex:1;min-width:200px" oninput="filterNotes()">
+        </div>
+        <div id="notesList" style="padding:1rem 2rem 3rem;"></div>
+    </div>
+
     <script>
 // === TAB SWITCHING ===
 function switchTab(tab) {
@@ -120,6 +129,7 @@ function switchTab(tab) {
     document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
     document.getElementById('tab-' + tab).classList.add('active');
     if (tab === 'wiki' && !wikiLoaded) loadWikiIndex();
+    if (tab === 'notes' && !notesLoaded) loadNotes();
 }
 
 // === VIDEOS TAB ===
@@ -259,6 +269,56 @@ function loadWikiPage(name) {
     }).catch(() => {
         document.getElementById('wikiMain').innerHTML = '<div class="wiki-placeholder"><p>❌ 載入失敗</p></div>';
     });
+}
+
+// === NOTES TAB ===
+let notesLoaded = false;
+let allNotes = [];
+const NOTES_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/raw/notes/';
+
+function loadNotes() {
+    notesLoaded = true;
+    // Fetch notes index from notes.json
+    fetch('notes.json').then(r => r.json()).then(notes => {
+        allNotes = notes;
+        renderNotes(notes);
+    }).catch(() => {
+        // Fallback: try to list from raw/notes via index
+        fetch(NOTES_BASE + 'notes.json').then(r => r.json()).then(notes => {
+            allNotes = notes;
+            renderNotes(notes);
+        }).catch(() => {
+            document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下：xxx」即可新增。</div>';
+        });
+    });
+}
+
+function renderNotes(notes) {
+    if (!notes || !notes.length) {
+        document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下：xxx」即可新增。</div>';
+        return;
+    }
+    notes.sort((a,b) => b.date.localeCompare(a.date));
+    const container = document.getElementById('notesList');
+    container.innerHTML = notes.map(n => `
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:0.75rem;padding:1.25rem;margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                <span style="font-size:0.75rem;color:#4ade80;">📅 ${n.date} ${n.time || ''}</span>
+                <span style="font-size:0.75rem;color:#64748b;">${n.source || ''}</span>
+            </div>
+            <p style="color:#e2e8f0;line-height:1.6;">${esc(n.content || n.title || '')}</p>
+            ${n.tags && n.tags.length ? '<div style="margin-top:0.5rem;">' + n.tags.map(t => `<span style="font-size:0.75rem;padding:0.15rem 0.5rem;border-radius:9999px;background:#1e3a5f;color:#60a5fa;margin-right:0.3rem;">${esc(t)}</span>`).join('') + '</div>' : ''}
+        </div>
+    `).join('');
+}
+
+function filterNotes() {
+    const q = document.getElementById('noteSearch').value.toLowerCase();
+    const filtered = allNotes.filter(n => 
+        (n.content || n.title || '').toLowerCase().includes(q) || 
+        (n.tags || []).some(t => t.toLowerCase().includes(q))
+    );
+    renderNotes(filtered);
 }
     </script>
 </body>
