@@ -277,6 +277,7 @@ fetch("short-videos.json").then(r=>r.json()).then(d=>{
     DATA = Array.isArray(d) ? d : (d.videos || []);
     document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 ${wikiPages.length || '?'} 個概念`;
     render();
+    if (wikiLoaded && !graphRendered) { buildConceptMap(); renderGraph(); }
 });
 
 // === VIDEOS TAB ===
@@ -386,7 +387,7 @@ function loadWikiIndex() {
         renderWikiSidebar(sections);
         buildConceptMap();
         document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 ${wikiPages.length} 個概念`;
-        renderGraph();
+        if (DATA.length) renderGraph();
     }).catch(() => {
         document.getElementById('wikiIndex').innerHTML = '<p style="color:#f87171">載入失敗</p>';
     });
@@ -596,10 +597,12 @@ function renderGraph() {
 
     // Force simulation
     const simulation = d3.forceSimulation(nodes)
-        .force('link', d3.forceLink(links).id(d => d.id).distance(d => 180 / d.weight).strength(d => d.weight * 0.3))
-        .force('charge', d3.forceManyBody().strength(-400))
+        .force('link', d3.forceLink(links).id(d => d.id).distance(d => 200).strength(0.4))
+        .force('charge', d3.forceManyBody().strength(-600))
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collision', d3.forceCollide().radius(d => d.size + 20));
+        .force('collision', d3.forceCollide().radius(d => d.size + 30))
+        .force('x', d3.forceX(width / 2).strength(0.05))
+        .force('y', d3.forceY(height / 2).strength(0.05));
 
     simulation.on('tick', () => {
         link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
