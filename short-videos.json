@@ -1,6 +1,23 @@
 {
   "videos": [
     {
+      "title": "基於 Nature Communications 研究：AI 與人類決策對比",
+      "date": "2026-04-14",
+      "source": "抖音 - 知方科普",
+      "url": "https://v.douyin.com/JDIw7ugKXR0/",
+      "url_status": "need_cookie",
+      "tags": [
+        "AI",
+        "科學"
+      ],
+      "category": "AI",
+      "core_points": "1. Nature Communications 研究對比 AI 與人類在決策任務中的表現差異\n2. AI 在大數據處理和模式識別上優於人類，但在模糊情境下不如人類直覺\n3. 人類的決策優勢在於經驗累積和情感判斷，AI 無法完全複製\n4. 最佳策略是 AI + 人類協作：AI 處理數據，人類做最終判斷\n5. 研究結果對醫療、金融等高風險決策領域有重要啟示",
+      "advice": "善用 AI 輔助決策，但關鍵判斷仍需人類把關",
+      "audience": "AI 從業者、研究人員、決策管理者",
+      "note": "",
+      "priority": "normal"
+    },
+    {
       "title": "納瓦爾人生复盘：財富與幸福的底層算法",
       "date": "2026-04-14",
       "source": "抖音 - 財富進化島",
