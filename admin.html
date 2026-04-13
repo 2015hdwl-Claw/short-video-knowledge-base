@@ -540,8 +540,9 @@ function openEdit(type, index, file) {
         const d = DATA[index];
         titleEl.textContent = '✏️ 編輯知識卡片';
         fieldsEl.innerHTML = makeField('標題', 'ed_title', d.title)
-            + makeField('分類', 'ed_category', d.category)
             + makeField('來源/作者', 'ed_source', d.source)
+            + makeField('原始連結', 'ed_url', d.url)
+            + makeField('分類', 'ed_category', d.category)
             + makeField('標籤（逗號分隔）', 'ed_tags', (d.tags||[]).join(', '))
             + makeField('核心重點', 'ed_points', d.core_points, 'textarea')
             + makeField('實踐建議', 'ed_advice', d.advice || '', 'textarea')
@@ -605,6 +606,7 @@ async function saveEdit() {
             videos[idx].title = getVal('ed_title');
             videos[idx].category = getVal('ed_category');
             videos[idx].source = getVal('ed_source');
+            videos[idx].url = getVal('ed_url');
             videos[idx].tags = getVal('ed_tags').split(',').map(t=>t.trim()).filter(Boolean);
             videos[idx].core_points = getVal('ed_points');
             videos[idx].advice = getVal('ed_advice');
