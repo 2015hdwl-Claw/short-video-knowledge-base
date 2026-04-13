@@ -77,6 +77,27 @@
         .back-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #60a5fa; cursor: pointer; font-size: 0.9rem; margin-bottom: 1rem; }
         .back-link:hover { text-decoration: underline; }
         .concept-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.75rem; }
+        /* Edit modal */
+        .edit-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
+        .edit-overlay.active { display: flex; }
+        .edit-box { background: #1e293b; border: 1px solid #475569; border-radius: 1rem; max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 1.5rem; }
+        .edit-box h3 { color: #f8fafc; margin-bottom: 1rem; }
+        .edit-box textarea { width: 100%; min-height: 200px; background: #0f172a; border: 1px solid #475569; color: #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.9rem; font-family: inherit; resize: vertical; }
+        .edit-box textarea:focus { outline: none; border-color: #3b82f6; }
+        .edit-box input[type=text] { width: 100%; background: #0f172a; border: 1px solid #475569; color: #e2e8f0; padding: 0.5rem; border-radius: 0.5rem; margin-bottom: 0.75rem; font-size: 0.9rem; }
+        .edit-box input:focus { outline: none; border-color: #3b82f6; }
+        .edit-actions { display: flex; gap: 0.75rem; margin-top: 1rem; justify-content: flex-end; }
+        .edit-actions button { padding: 0.5rem 1.25rem; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.9rem; }
+        .btn-save { background: #3b82f6; color: white; }
+        .btn-save:hover { background: #2563eb; }
+        .btn-cancel { background: #334155; color: #94a3b8; }
+        .btn-cancel:hover { background: #475569; }
+        .edit-status { margin-top: 0.75rem; font-size: 0.85rem; }
+        .edit-status.ok { color: #4ade80; }
+        .edit-status.err { color: #f87171; }
+        .note-reminder { font-size: 0.75rem; color: #fbbf24; margin-top: 0.3rem; }
+        .edit-icon { cursor: pointer; color: #64748b; font-size: 0.8rem; padding: 0.15rem 0.4rem; border-radius: 0.25rem; }
+        .edit-icon:hover { color: #60a5fa; background: #1e3a5f; }
     </style>
 </head>
 <body>
@@ -131,6 +152,20 @@
             <input type="text" id="noteSearch" placeholder="🔍 搜尋筆記內容..." style="flex:1;min-width:200px" oninput="filterNotes()">
         </div>
         <div id="notesList" style="padding:1rem 2rem 3rem;"></div>
+    </div>
+
+    <!-- Edit Overlay -->
+    <div class="edit-overlay" id="editOverlay">
+        <div class="edit-box">
+            <h3 id="editTitle">✏️ 編輯</h3>
+            <input type="text" id="editTags" placeholder="標籤(逗號分隔)">
+            <textarea id="editContent" placeholder="內容..."></textarea>
+            <div class="edit-actions">
+                <button class="btn-cancel" onclick="closeEdit()">取消</button>
+                <button class="btn-save" onclick="saveEdit()">💾 儲存</button>
+            </div>
+            <div class="edit-status" id="editStatus"></div>
+        </div>
     </div>
 
     <script>
@@ -273,6 +308,7 @@ function render() {
                 <span class="badge badge-source">${esc(d.source)}</span>
                 <span class="badge badge-cat">${esc(d.category)}</span>
                 <span class="badge badge-date">${d.date}</span>
+                <span class="edit-icon" onclick="event.stopPropagation();openEdit('video',${idx})" title="編輯">✏️</span>
             </div>
             ${ptsHtml}${conceptBadges}${noteHtml}
         </div>`;
@@ -283,7 +319,7 @@ function openModal(idx) {
     const d = DATA[idx];
     const points = (d.core_points || '').split('\n').filter(p => p.trim());
     const concepts = getConceptsForVideo(idx);
-    const conceptLinks = concepts.length ? '<div style="margin-top:1rem;"><span style="color:#64748b;font-size:0.85rem;">相關概念：</span>' +
+    const conceptLinks = concepts.length ? '<div style="margin-top:1rem;"><span style="color:#64748b;font-size:0.85rem;">相關概念:</span>' +
         concepts.map(c => `<span class="badge badge-concept" onclick="document.getElementById('modal').classList.remove('active');goToConcept('${esc(c)}')" style="margin-right:0.3rem;cursor:pointer;">🧠 ${esc(c)}</span>`).join('') + '</div>' : '';
     document.getElementById('modalBody').innerHTML = `
         <h2>${esc(d.title)}</h2>
@@ -345,7 +381,7 @@ function renderWikiSidebar(sections) {
     let html = '';
     for (const [section, items] of Object.entries(sections)) {
         if (!items.length) continue;
-        html += `<h3>${icons[section] || ''} ${section}（${items.length}）</h3>`;
+        html += `<h3>${icons[section] || ''} ${section}(${items.length})</h3>`;
         items.forEach(name => {
             const count = findRelatedVideos(name).length;
             html += `<div class="wiki-item" onclick="loadWikiPage('${esc(name)}')">${esc(name)}<span class="count">(${count})</span></div>`;
@@ -378,7 +414,7 @@ function loadWikiPage(name) {
         const related = findRelatedVideos(name);
         let relatedHtml = '';
         if (related.length > 0) {
-            relatedHtml = '<h2 style="color:#fbbf24;margin-top:2rem;">📹 相關知識卡片（' + related.length + '）</h2>';
+            relatedHtml = '<h2 style="color:#fbbf24;margin-top:2rem;">📹 相關知識卡片(' + related.length + ')</h2>';
             relatedHtml += '<p style="color:#64748b;font-size:0.85rem;margin-bottom:0.75rem;">點擊卡片查看完整內容</p>';
             related.slice(0, 20).forEach(idx => {
                 const d = DATA[idx];
@@ -433,36 +469,161 @@ function loadNotes() {
         allNotes = notes;
         renderNotes(notes);
     }).catch(() => {
-        document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下：xxx」即可新增。</div>';
+        document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下:xxx」即可新增。</div>';
     });
 }
 
 function renderNotes(notes) {
     if (!notes || !notes.length) {
-        document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下：xxx」即可新增。</div>';
+        document.getElementById('notesList').innerHTML = '<div class="empty">尚無筆記。在任何 channel 說「記下:xxx」即可新增。</div>';
         return;
     }
     notes.sort((a,b) => b.date.localeCompare(a.date));
-    document.getElementById('notesList').innerHTML = notes.map(n => `
+    document.getElementById('notesList').innerHTML = notes.map((n, i) => `
         <div style="background:#1e293b;border:1px solid #334155;border-radius:0.75rem;padding:1.25rem;margin-bottom:1rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
                 <span style="font-size:0.75rem;color:#4ade80;">📅 ${n.date} ${n.time || ''}</span>
-                <span style="font-size:0.75rem;color:#64748b;">${n.source || ''}</span>
+                <div><span style="font-size:0.75rem;color:#64748b;">${n.source || ''}</span> <span class="edit-icon" onclick="editNote(${i})" title="編輯">✏️</span></div>
             </div>
             <p style="color:#e2e8f0;line-height:1.6;">${esc(n.content || n.title || '')}</p>
             ${n.tags && n.tags.length ? '<div style="margin-top:0.5rem;">' + n.tags.map(t => `<span class="badge badge-concept" style="font-size:0.75rem;padding:0.15rem 0.5rem;background:#1e3a5f;color:#60a5fa;margin-right:0.3rem;">${esc(t)}</span>`).join('') + '</div>' : ''}
+            ${n.reminder ? '<div class="note-reminder">⏰ 提醒:' + esc(n.reminder) + '</div>' : ''}
         </div>
     `).join('');
 }
 
 function filterNotes() {
     const q = document.getElementById('noteSearch').value.toLowerCase();
-    const filtered = allNotes.filter(n =>
-        (n.content || n.title || '').toLowerCase().includes(q) ||
+    const filtered = allNotes.filter(n => 
+        (n.content || n.title || '').toLowerCase().includes(q) || 
         (n.tags || []).some(t => t.toLowerCase().includes(q))
     );
     renderNotes(filtered);
 }
+
+// === EDIT SYSTEM (GitHub API) ===
+const GH_API = 'https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/contents/';
+// Token stored in localStorage for security (set via /token endpoint or manually)
+function getGHToken() { return localStorage.getItem('gh_token') || ''; }
+function setGHToken(t) { localStorage.setItem('gh_token', t); }
+let currentEdit = null; // { type: 'note'|'video', index, file }
+
+function openEdit(type, index, file) {
+    currentEdit = { type, index, file };
+    const overlay = document.getElementById('editOverlay');
+    const titleEl = document.getElementById('editTitle');
+    const tagsEl = document.getElementById('editTags');
+    const contentEl = document.getElementById('editContent');
+    document.getElementById('editStatus').textContent = '';
+
+    if (type === 'note' && allNotes[index]) {
+        const n = allNotes[index];
+        titleEl.textContent = '✏️ 編輯筆記';
+        tagsEl.value = (n.tags || []).join(', ');
+        contentEl.value = n.content || n.title || '';
+    } else if (type === 'video' && DATA[index]) {
+        const d = DATA[index];
+        titleEl.textContent = '✏️ 編輯知識卡片';
+        tagsEl.value = (d.tags || []).join(', ');
+        contentEl.value = d.core_points || '';
+    }
+    overlay.classList.add('active');
+}
+
+function closeEdit() {
+    document.getElementById('editOverlay').classList.remove('active');
+    currentEdit = null;
+}
+
+function editNote(index) {
+    openEdit('note', index, allNotes[index].file);
+}
+
+async function saveEdit() {
+    if (!currentEdit) return;
+    const statusEl = document.getElementById('editStatus');
+    statusEl.textContent = '⏳ 儲存中...';
+    statusEl.className = 'edit-status';
+
+    const newTags = document.getElementById('editTags').value.split(',').map(t => t.trim()).filter(t => t);
+    const newContent = document.getElementById('editContent').value;
+
+    if (currentEdit.type === 'note') {
+        const file = currentEdit.file;
+        // Fetch current content
+        try {
+            const res = await fetch(GH_API + file, { headers: { 'Authorization': 'token ' + GH_TOKEN } });
+            const data = await res.json();
+            const currentMd = atob(data.content);
+            // Rebuild MD with new content
+            const headerEnd = currentMd.indexOf('---\n') + 4;
+            const header = currentMd.substring(0, headerEnd);
+            const dateM = currentMd.match(/\*\*日期\*\*：(\S+)/);
+            const timeM = currentMd.match(/\*\*時間\*\*：(\S+)/);
+            const sourceM = currentMd.match(/\*\*來源\*\*：(\S+)/);
+            const reminderM = currentMd.match(/\*\*提醒\*\*：(.+)/);
+            let newMd = header + newContent + '\n';
+            // Update header with new tags
+            newMd = newMd.replace(/\*\*標籤\*\*：.*/, '**標籤**：' + newTags.join(', '));
+            // Push to GitHub
+            const putRes = await fetch(GH_API + file, {
+                method: 'PUT',
+                headers: { 'Authorization': 'token ' + GH_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '📝 編輯筆記', content: btoa(unescape(encodeURIComponent(newMd))), sha: data.sha })
+            });
+            if (putRes.ok) {
+                statusEl.textContent = '✅ 已儲存！';
+                statusEl.className = 'edit-status ok';
+                // Update local
+                allNotes[currentEdit.index].content = newContent;
+                allNotes[currentEdit.index].tags = newTags;
+                renderNotes(allNotes);
+                setTimeout(closeEdit, 1000);
+            } else {
+                const err = await putRes.json();
+                statusEl.textContent = '❌ 儲存失敗：' + (err.message || 'unknown');
+                statusEl.className = 'edit-status err';
+            }
+        } catch (e) {
+            statusEl.textContent = '❌ 網路錯誤：' + e.message;
+            statusEl.className = 'edit-status err';
+        }
+    } else if (currentEdit.type === 'video') {
+        // For videos, edit the JSON
+        try {
+            const res = await fetch(GH_API + 'short-videos.json', { headers: { 'Authorization': 'token ' + GH_TOKEN } });
+            const data = await res.json();
+            const videos = Array.isArray(data) ? data : (data.videos || []);
+            const idx = currentEdit.index;
+            videos[idx].core_points = newContent;
+            videos[idx].tags = newTags;
+            const newJson = JSON.stringify({ videos }, null, 2);
+            const putRes = await fetch(GH_API + 'short-videos.json', {
+                method: 'PUT',
+                headers: { 'Authorization': 'token ' + GH_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '✏️ 編輯知識卡片：' + videos[idx].title.substring(0, 20), content: btoa(unescape(encodeURIComponent(newJson))), sha: data.sha || JSON.parse(atob(data.content)).sha })
+            });
+            if (putRes.ok) {
+                statusEl.textContent = '✅ 已儲存！';
+                statusEl.className = 'edit-status ok';
+                DATA[idx].core_points = newContent;
+                DATA[idx].tags = newTags;
+                render();
+                setTimeout(closeEdit, 1000);
+            } else {
+                const err = await putRes.json();
+                statusEl.textContent = '❌ 儲存失敗：' + (err.message || 'unknown');
+                statusEl.className = 'edit-status err';
+            }
+        } catch (e) {
+            statusEl.textContent = '❌ 網路錯誤：' + e.message;
+            statusEl.className = 'edit-status err';
+        }
+    }
+}
+
+// Close edit on overlay click
+document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
     </script>
 </body>
 </html>
