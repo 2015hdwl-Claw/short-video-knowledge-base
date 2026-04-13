@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>短影音知識庫 Admin</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
@@ -134,15 +135,28 @@
 
     <!-- Tab 2: Wiki -->
     <div class="tab-content" id="tab-wiki">
-        <div class="wiki-container">
-            <div class="wiki-sidebar" id="wikiSidebar">
-                <input type="text" class="wiki-search" id="wikiSearch" placeholder="🔍 搜尋概念...">
-                <div id="wikiIndex"></div>
-            </div>
-            <div class="wiki-main" id="wikiMain">
-                <div class="wiki-placeholder">
-                    <div class="icon">📚</div>
-                    <p>從左側選擇一個概念或實體來查看知識頁面</p>
+        <div style="padding:0.5rem 1rem;display:flex;gap:0.5rem;background:#1e293b;border-bottom:1px solid #334155;">
+            <button onclick="showWikiView('graph')" id="btnGraph" style="padding:0.4rem 1rem;border:1px solid #475569;background:#3b82f6;color:white;border-radius:0.375rem;cursor:pointer;font-size:0.85rem;">🌐 知識圖譜</button>
+            <button onclick="showWikiView('list')" id="btnList" style="padding:0.4rem 1rem;border:1px solid #475569;background:#1e293b;color:#94a3b8;border-radius:0.375rem;cursor:pointer;font-size:0.85rem;">📋 列表模式</button>
+        </div>
+        <!-- Graph View -->
+        <div id="wikiGraphView" style="height:calc(100vh - 170px);position:relative;">
+            <svg id="wikiSvg" width="100%" height="100%"></svg>
+            <div id="graphTooltip" style="display:none;position:absolute;background:#1e293b;border:1px solid #475569;border-radius:0.5rem;padding:0.75rem 1rem;max-width:280px;font-size:0.85rem;pointer-events:none;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>
+            <div style="position:absolute;bottom:1rem;left:1rem;color:#475569;font-size:0.75rem;">拖曳節點移動 · 滾輪縮放 · 點擊節點查看詳情</div>
+        </div>
+        <!-- List View -->
+        <div id="wikiListView" style="display:none;">
+            <div class="wiki-container" style="height:calc(100vh - 170px);">
+                <div class="wiki-sidebar" id="wikiSidebar">
+                    <input type="text" class="wiki-search" id="wikiSearch" placeholder="🔍 搜尋概念...">
+                    <div id="wikiIndex"></div>
+                </div>
+                <div class="wiki-main" id="wikiMain">
+                    <div class="wiki-placeholder">
+                        <div class="icon">📚</div>
+                        <p>從左側選擇一個概念或實體來查看知識頁面</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -372,6 +386,7 @@ function loadWikiIndex() {
         renderWikiSidebar(sections);
         buildConceptMap();
         document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 ${wikiPages.length} 個概念`;
+        renderGraph();
     }).catch(() => {
         document.getElementById('wikiIndex').innerHTML = '<p style="color:#f87171">載入失敗</p>';
     });
@@ -462,6 +477,147 @@ function findRelatedConcepts(conceptName) {
 function openVideoFromWiki(idx) {
     switchTab('videos');
     setTimeout(() => openModal(idx), 100);
+}
+
+// === WIKI VIEW SWITCH ===
+function showWikiView(mode) {
+    const g = document.getElementById('wikiGraphView');
+    const l = document.getElementById('wikiListView');
+    const bg = document.getElementById('btnGraph');
+    const bl = document.getElementById('btnList');
+    if (mode === 'graph') {
+        g.style.display = 'block'; l.style.display = 'none';
+        bg.style.background = '#3b82f6'; bg.style.color = 'white';
+        bl.style.background = '#1e293b'; bl.style.color = '#94a3b8';
+    } else {
+        g.style.display = 'none'; l.style.display = 'block';
+        bl.style.background = '#3b82f6'; bl.style.color = 'white';
+        bg.style.background = '#1e293b'; bg.style.color = '#94a3b8';
+    }
+}
+
+// === KNOWLEDGE GRAPH (D3 Force) ===
+let graphRendered = false;
+function renderGraph() {
+    if (graphRendered || !wikiPages.length || !DATA.length) return;
+    graphRendered = true;
+
+    const svg = d3.select('#wikiSvg');
+    const width = document.getElementById('wikiGraphView').clientWidth;
+    const height = document.getElementById('wikiGraphView').clientHeight;
+
+    // Build nodes and links
+    const nodes = [];
+    const links = [];
+    const nodeMap = {};
+
+    // Concept/Entity nodes
+    wikiPages.forEach(p => {
+        const related = findRelatedVideos(p.name);
+        if (related.length > 0) {
+            const node = { id: p.name, type: p.section || '概念', size: Math.min(Math.max(related.length, 8), 40), count: related.length };
+            nodes.push(node);
+            nodeMap[p.name] = node;
+        }
+    });
+
+    // Links between concepts that share videos
+    for (let i = 0; i < nodes.length; i++) {
+        const a = new Set(findRelatedVideos(nodes[i].id));
+        for (let j = i + 1; j < nodes.length; j++) {
+            const b = findRelatedVideos(nodes[j].id);
+            const overlap = b.filter(x => a.has(x)).length;
+            if (overlap >= 1) {
+                links.push({ source: nodes[i].id, target: nodes[j].id, weight: overlap });
+            }
+        }
+    }
+
+    // Color map
+    const colorMap = { '概念': '#60a5fa', '實體': '#c084fc', '比較': '#fbbf24', '綜合': '#4ade80' };
+
+    // SVG setup with zoom
+    const g = svg.append('g');
+    const zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (e) => g.attr('transform', e.transform));
+    svg.call(zoom);
+
+    // Arrow marker
+    svg.append('defs').append('marker')
+        .attr('id', 'arrow').attr('viewBox', '0 -5 10 10').attr('refX', 25).attr('refY', 0)
+        .attr('markerWidth', 6).attr('markerHeight', 6).attr('orient', 'auto')
+        .append('path').attr('d', 'M0,-5L10,0L0,5').attr('fill', '#334155');
+
+    // Links
+    const link = g.append('g').selectAll('line').data(links).join('line')
+        .attr('stroke', '#334155').attr('stroke-opacity', 0.6).attr('stroke-width', d => Math.min(d.weight * 1.5, 4));
+
+    // Nodes
+    const node = g.append('g').selectAll('g').data(nodes).join('g')
+        .call(d3.drag().on('start', dragStart).on('drag', dragging).on('end', dragEnd));
+
+    node.append('circle')
+        .attr('r', d => d.size)
+        .attr('fill', d => colorMap[d.type] || '#60a5fa')
+        .attr('fill-opacity', 0.15)
+        .attr('stroke', d => colorMap[d.type] || '#60a5fa')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer');
+
+    node.append('text')
+        .text(d => d.id)
+        .attr('text-anchor', 'middle').attr('dy', d => d.size + 16)
+        .attr('fill', '#e2e8f0').attr('font-size', d => Math.min(12 + d.size * 0.2, 16) + 'px')
+        .style('pointer-events', 'none');
+
+    node.append('text')
+        .text(d => d.count)
+        .attr('text-anchor', 'middle').attr('dy', '0.35em')
+        .attr('fill', d => colorMap[d.type] || '#60a5fa').attr('font-size', '13px').attr('font-weight', 'bold')
+        .style('pointer-events', 'none');
+
+    // Tooltip & click
+    const tooltip = document.getElementById('graphTooltip');
+    node.on('mouseover', (e, d) => {
+        const videos = findRelatedVideos(d.id).slice(0, 5);
+        const videoList = videos.map(i => '• ' + DATA[i].title.substring(0, 30)).join('<br>');
+        tooltip.innerHTML = `<strong style="color:${colorMap[d.type]}">${d.id}</strong> <span style="color:#64748b;">(${d.count} 筆)</span><br><br>${videoList}${videos.length > 5 ? '<br>...' : ''}`;
+        tooltip.style.display = 'block';
+    }).on('mousemove', (e) => {
+        tooltip.style.left = (e.pageX + 15) + 'px';
+        tooltip.style.top = (e.pageY - 10) + 'px';
+    }).on('mouseout', () => {
+        tooltip.style.display = 'none';
+    }).on('click', (e, d) => {
+        e.stopPropagation();
+        switchTab('wiki');
+        showWikiView('list');
+        loadWikiPage(d.id);
+    });
+
+    // Force simulation
+    const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(links).id(d => d.id).distance(d => 180 / d.weight).strength(d => d.weight * 0.3))
+        .force('charge', d3.forceManyBody().strength(-400))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(d => d.size + 20));
+
+    simulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+    function dragStart(e, d) { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+    function dragging(e, d) { d.fx = e.x; d.fy = e.y; }
+    function dragEnd(e, d) { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+
+    // Resize
+    window.addEventListener('resize', () => {
+        const w = document.getElementById('wikiGraphView').clientWidth;
+        const h = document.getElementById('wikiGraphView').clientHeight;
+        simulation.force('center', d3.forceCenter(w / 2, h / 2));
+        simulation.alpha(0.3).restart();
+    });
 }
 
 // === NOTES TAB ===
