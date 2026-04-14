@@ -10,7 +10,7 @@ import os, json, re, glob
 REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 CONCEPTS_DIR = os.path.join(REPO, 'wiki', 'concepts')
 JSON_PATH = os.path.join(REPO, 'short-videos', 'short-videos.json')
-REPORT_PATH = os.path.join(REPO, 'wiki', 'lint-report.md')
+REPORT_PATH = os.path.join(REPO, 'brainstorming', 'health', 'lint-report.md')
 
 def load_videos():
     with open(JSON_PATH, 'r', encoding='utf-8') as f:
