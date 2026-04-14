@@ -932,20 +932,20 @@ function renderMd(text) {
         else if (line.startsWith('- **')) {
             const m = line.match(/^- \*\*(.+?)\*\*(.*)/);
             if (m) {
-                let rest = m[2].replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+'concepts/'+file+'.md');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
+                let rest = m[2].replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+\'concepts/\'+file+\'.md\');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
                 html += '<div style="margin:.5rem 0;padding:.5rem;background:var(--bg2);border-radius:.5rem;"><strong>'+esc(m[1])+'</strong>'+rest+'</div>';
             }
         }
         else if (line.startsWith('- ')) {
             let t = line.substring(2);
             t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+'concepts/'+file+'.md');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
+            t = t.replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+\'concepts/\'+file+\'.md\');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
             html += '<div style="margin:.3rem 0;padding-left:1rem;color:var(--t2);">• '+t+'</div>';
         }
         else if (line.startsWith('---')) html += '<hr style="border:none;border-top:1px solid var(--bd);margin:1.5rem 0;">';
         else if (line.trim()) {
             let t = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+'concepts/'+file+'.md');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
+            t = t.replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+\'concepts/\'+file+\'.md\');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
             html += '<p style="margin:.3rem 0;color:var(--t2);">'+t+'</p>';
         }
     });
