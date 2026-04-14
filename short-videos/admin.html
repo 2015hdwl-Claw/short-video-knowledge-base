@@ -499,7 +499,7 @@ function loadWikiPage(name) {
 
 function loadNotes() {
     notesLoaded = true;
-    fetch('notes.json').then(r => r.json()).then(notes => {
+    fetch('../notes.json').then(r => r.json()).then(notes => {
         allNotes = notes;
         renderNotes(notes);
     }).catch(() => {
