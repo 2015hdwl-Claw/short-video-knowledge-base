@@ -98,6 +98,26 @@ loadTheme();
         .wiki-placeholder { text-align: center; padding: 4rem; color: #475569; }
         .wiki-placeholder .icon { font-size: 3rem; margin-bottom: 1rem; }
         .wiki-search { width: 100%; margin-bottom: 1rem; }
+        /* === BATCH EDIT === */
+        .card { position: relative; }
+        .card-check { position: absolute; top: 0.5rem; left: 0.5rem; z-index: 2; width: 18px; height: 18px; cursor: pointer; accent-color: var(--ac); }
+        .card.checked { border-color: var(--ac); box-shadow: 0 0 0 2px var(--acg); }
+        .select-all-wrap { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--tm); cursor: pointer; user-select: none; }
+        .select-all-wrap input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--ac); }
+        .batch-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg2); border-top: 1px solid var(--bd); padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; z-index: 200; transform: translateY(100%); transition: transform 0.25s ease; flex-wrap: wrap; }
+        .batch-bar.show { transform: translateY(0); }
+        .batch-bar .counter { font-size: 0.9rem; color: var(--t1); font-weight: 600; white-space: nowrap; }
+        .batch-bar select, .batch-bar input[type=text] { background: var(--bg3); border: 1px solid var(--bd); color: var(--t2); padding: 0.4rem 0.7rem; border-radius: 0.4rem; font-size: 0.85rem; }
+        .batch-bar select:focus, .batch-bar input[type=text]:focus { outline: none; border-color: var(--ac); }
+        .batch-bar .btn-batch { background: var(--ac); color: #fff; border: none; padding: 0.4rem 0.8rem; border-radius: 0.4rem; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
+        .batch-bar .btn-batch:hover { background: var(--ach); }
+        .batch-bar .btn-cancel-sel { background: transparent; border: 1px solid var(--bd); color: var(--tm); padding: 0.4rem 0.8rem; border-radius: 0.4rem; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
+        .batch-bar .btn-cancel-sel:hover { border-color: var(--rd); color: var(--rd); }
+        .batch-bar .batch-status { font-size: 0.8rem; color: var(--tm); }
+        @media (max-width: 600px) {
+            .batch-bar { padding: 0.5rem 0.75rem; gap: 0.5rem; }
+            .batch-bar .counter { width: 100%; }
+        }
         /* Related videos in wiki */
         .related-video-card { background: var(--bg1); border: 1px solid #334155; border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.15s; }
         .related-video-card:hover { border-color: var(--ac); background: var(--bg2); }
@@ -187,6 +207,16 @@ loadTheme();
             <input type="text" id="search" placeholder="🔍 搜尋標題、作者、內容..." style="flex:1;min-width:200px">
             <select id="catFilter"><option value="">所有分類</option></select>
             <select id="sortOrder"><option value="date-desc">最新優先</option><option value="date-asc">最舊優先</option><option value="title">標題排序</option></select>
+            <label class="select-all-wrap"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)">全選</label>
+        </div>
+        <div class="batch-bar" id="batchBar">
+            <span class="counter" id="batchCounter">選取了 0 筆</span>
+            <select id="batchCatSel"><option value="">批量修改分類...</option><option value="AI">AI</option><option value="教育">教育</option><option value="個人成長">個人成長</option><option value="財經">財經</option><option value="健康">健康</option><option value="心理學">心理學</option></select>
+            <button class="btn-batch" onclick="batchSetCategory()">套用分類</button>
+            <input type="text" id="batchTagsInput" placeholder="輸入標籤，逗號分隔...">
+            <button class="btn-batch" onclick="batchSetTags()">套用標籤</button>
+            <button class="btn-cancel-sel" onclick="clearSelection()">取消選取</button>
+            <span class="batch-status" id="batchStatus"></span>
         </div>
         <div class="grid" id="grid"></div>
         <div class="modal" id="modal">
@@ -259,11 +289,22 @@ loadTheme();
     <script>
 // === GLOBALS ===
 let DATA = [];
+let selectedIds = new Set();
 let wikiLoaded = false;
 let wikiPages = [];
 let notesLoaded = false;
 let allNotes = [];
 const WIKI_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/wiki/';
+const CONCEPT_FILE_MAP = {
+    'AI工具與編程': 'ai-coding-tools',
+    'AI趨勢與產業': 'ai-trends',
+    '財經投資理財': 'finance-investing',
+    '心理學與認知': 'psychology',
+    '健康養生': 'health',
+    '創業與商業模式': 'entrepreneurship',
+    '學習與知識管理': 'learning',
+    '科學歷史與人文': 'science-history'
+};
 
 // === CONCEPT MAPPING: tag/category → wiki page ===
 // Build a map of which tags/categories link to which wiki concepts
@@ -390,7 +431,9 @@ function render() {
         const conceptBadges = concepts.length ? '<div class="concept-tags">' + concepts.map(c =>
             `<span class="badge badge-concept" onclick="event.stopPropagation();goToConcept('${esc(c)}')">🧠 ${esc(c)}</span>`
         ).join('') + '</div>' : '';
-        return `<div class="card" onclick="openModal(${idx})">
+        const isChecked = selectedIds.has(idx);
+        return `<div class="card${isChecked ? ' checked' : ''}" onclick="openModal(${idx})">
+            <input type="checkbox" class="card-check" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation();toggleSelect(${idx},this)" title="選取">
             <div class="title">${esc(d.title)}</div>
             <div class="meta">
                 <span class="badge badge-source">${esc(d.source)}</span>
@@ -569,6 +612,97 @@ function ghDecode(base64) {
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return new TextDecoder().decode(bytes);
+}
+
+
+// === BATCH EDIT FUNCTIONS ===
+function toggleSelect(idx, cb) {
+    if (cb.checked) { selectedIds.add(idx); } else { selectedIds.delete(idx); }
+    updateBatchBar();
+    cb.closest('.card').classList.toggle('checked', cb.checked);
+}
+function toggleSelectAll(checked) {
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+    const cards = grid.querySelectorAll('.card');
+    const filtered = getFilteredIndices();
+    if (checked) {
+        filtered.forEach(i => selectedIds.add(i));
+        cards.forEach(c => { c.classList.add('checked'); const cb = c.querySelector('.card-check'); if (cb) cb.checked = true; });
+    } else {
+        selectedIds.clear();
+        cards.forEach(c => { c.classList.remove('checked'); const cb = c.querySelector('.card-check'); if (cb) cb.checked = false; });
+    }
+    updateBatchBar();
+}
+function getFilteredIndices() {
+    if (!DATA.length) return [];
+    const q = document.getElementById('search').value.toLowerCase();
+    const cat = document.getElementById('catFilter').value;
+    let filtered = DATA.filter((d, i) => {
+        if (cat && d.category !== cat) return false;
+        if (q && !d.title.toLowerCase().includes(q) && !d.source.toLowerCase().includes(q) && !(d.core_points||'').toLowerCase().includes(q)) return false;
+        return true;
+    });
+    return filtered.map(d => DATA.indexOf(d));
+}
+function clearSelection() {
+    selectedIds.clear();
+    toggleSelectAll(false);
+    document.getElementById('selectAll').checked = false;
+}
+function updateBatchBar() {
+    const bar = document.getElementById('batchBar');
+    const counter = document.getElementById('batchCounter');
+    const n = selectedIds.size;
+    counter.textContent = '\u9078\u53d6\u4e86 ' + n + ' \u7b46';
+    bar.classList.toggle('show', n > 0);
+    const sa = document.getElementById('selectAll');
+    if (sa) {
+        const filtered = getFilteredIndices();
+        sa.checked = filtered.length > 0 && filtered.every(i => selectedIds.has(i));
+    }
+}
+async function batchSetCategory() {
+    const cat = document.getElementById('batchCatSel').value;
+    if (!cat || !selectedIds.size) return;
+    const status = document.getElementById('batchStatus');
+    status.textContent = '\u23f3 \u5132\u5b58\u4e2d...';
+    try {
+        await batchSave('category', cat);
+        status.textContent = '\u2705 \u5df2\u66f4\u65b0 ' + selectedIds.size + ' \u7b46\u5206\u985e';
+        document.getElementById('batchCatSel').value = '';
+    } catch (e) {
+        status.textContent = '\u274c \u5931\u6557\uff1a' + e.message;
+    }
+}
+async function batchSetTags() {
+    const tagsStr = document.getElementById('batchTagsInput').value.trim();
+    if (!tagsStr || !selectedIds.size) return;
+    const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+    const status = document.getElementById('batchStatus');
+    status.textContent = '\u23f3 \u5132\u5b58\u4e2d...';
+    try {
+        await batchSave('tags', tags);
+        status.textContent = '\u2705 \u5df2\u66f4\u65b0 ' + selectedIds.size + ' \u7b46\u6a19\u7c64';
+        document.getElementById('batchTagsInput').value = '';
+    } catch (e) {
+        status.textContent = '\u274c \u5931\u6557\uff1a' + e.message;
+    }
+}
+async function batchSave(field, value) {
+    const remote = await ghGet('short-videos.json');
+    const parsed = typeof remote.content === 'string' ? JSON.parse(ghDecode(remote.content)) : remote;
+    const videos = Array.isArray(parsed) ? parsed : (parsed.videos || []);
+    const ids = [...selectedIds];
+    ids.forEach(idx => {
+        if (videos[idx]) videos[idx][field] = value;
+        if (DATA[idx]) DATA[idx][field] = value;
+    });
+    const newJson = JSON.stringify({ videos }, null, 2);
+    const label = field === 'category' ? '\u6279\u91cf\u4fee\u6539\u5206\u985e' : '\u6279\u91cf\u4fee\u6539\u6a19\u7c64';
+    await ghPut('short-videos.json', { message: '\ud83d\udce6 ' + label + '\uff08' + ids.length + '\u7b46\uff09', content: btoa(unescape(encodeURIComponent(newJson))), sha: remote.sha });
+    render();
 }
 
 async function saveEdit() {
@@ -798,20 +932,20 @@ function renderMd(text) {
         else if (line.startsWith('- **')) {
             const m = line.match(/^- \*\*(.+?)\*\*(.*)/);
             if (m) {
-                let rest = m[2].replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+                let rest = m[2].replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+'concepts/'+file+'.md');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
                 html += '<div style="margin:.5rem 0;padding:.5rem;background:var(--bg2);border-radius:.5rem;"><strong>'+esc(m[1])+'</strong>'+rest+'</div>';
             }
         }
         else if (line.startsWith('- ')) {
             let t = line.substring(2);
             t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+'concepts/'+file+'.md');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
             html += '<div style="margin:.3rem 0;padding-left:1rem;color:var(--t2);">• '+t+'</div>';
         }
         else if (line.startsWith('---')) html += '<hr style="border:none;border-top:1px solid var(--bd);margin:1.5rem 0;">';
         else if (line.trim()) {
             let t = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            t = t.replace(/\[\[(.+?)\]\]/g, '<a href="#" onclick="loadConceptPage(\'wiki/concepts/$1.md\');event.preventDefault();" style="color:var(--ac);">$1</a>');
+            t = t.replace(/\[\[(.+?)\]\]/g, (match, name) => { const file = CONCEPT_FILE_MAP[name] || name; return '<a href="#" onclick="loadConceptPage(WIKI_BASE+'concepts/'+file+'.md');event.preventDefault();" style="color:var(--ac);">'+name+'</a>'; });
             html += '<p style="margin:.3rem 0;color:var(--t2);">'+t+'</p>';
         }
     });
