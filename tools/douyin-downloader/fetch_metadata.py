@@ -11,7 +11,7 @@ if sys.stderr and hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 from urllib.parse import urlencode, quote
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOCAL_CRYPTO = REPO_ROOT / "tools" / "douyin-downloader"
 _TMP = os.environ.get("TEMP", os.environ.get("TMP", "/tmp"))
 DOUNIK_PATH = os.environ.get("DOUNIK_PATH", str(_LOCAL_CRYPTO) if _LOCAL_CRYPTO.is_dir() else os.path.join(_TMP, "DouK-Downloader"))
