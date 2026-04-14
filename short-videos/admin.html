@@ -60,6 +60,8 @@ loadTheme();
         .badge-date { background: var(--grb); color: var(--gr); }
         .badge-concept { background: var(--yeb); color: var(--ye); cursor: pointer; }
         .badge-concept:hover { background: #5a4520; }
+        .badge-no-url { background: #7f1d1d; color: #fca5a5; animation: pulse-soft 2s infinite; }
+        @keyframes pulse-soft { 0%,100% { opacity: 1; } 50% { opacity: 0.7; }
         .card .points { font-size: 0.85rem; color: var(--tm); line-height: 1.6; }
         .card .points li { margin-bottom: 0.25rem; }
         .card .note { margin-top: 0.5rem; font-size: 0.85rem; color: var(--ye); font-style: italic; }
@@ -389,7 +391,7 @@ function getConceptsForVideo(idx) {
 // === LOAD DATA ===
 fetch("short-videos.json").then(r=>r.json()).then(d=>{
     DATA = Array.isArray(d) ? d : (d.videos || []);
-    document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | 🧠 ${wikiPages.length || '?'} 個概念`;
+    document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | ⚠ ${DATA.filter(d=>!d.url).length} 缺URL | 🧠 ${wikiPages.length || '?'} 概念`;
     render();
 });
 
@@ -439,7 +441,7 @@ function render() {
             <div class="meta">
                 <span class="badge badge-source">${esc(d.source)}</span>
                 <span class="badge badge-cat">${esc(d.category)}</span>
-                <span class="badge badge-date">${d.date}</span>
+                <span class="badge badge-date">${d.date}</span>${!d.url ? ' <span class="badge badge-no-url" title="缺原網址">⚠ 缺URL</span>' : ''}
                 <span class="edit-icon" onclick="event.stopPropagation();openEdit('video',${idx})" title="編輯">✏️</span>
             </div>
             ${ptsHtml}${conceptBadges}${noteHtml}
