@@ -124,20 +124,23 @@ def _generate_summary(title, tags, source, url, subtitle=""):
         )
     else:
         prompt = (
-            "Based on the following short video topic, generate 3-5 core points "
+            "Based on the following short video information, generate a knowledge summary "
             "in Traditional Chinese.\n"
-            "Each point on its own line, starting with a number. "
-            "Concise and impactful, each point under 40 characters.\n\n"
-            "Topic: " + topic + "\n"
+            "The video has no transcript available, so infer likely content from title and tags.\n\n"
+            "Structure:\n"
+            "1. One-line summary (under 30 chars)\n"
+            "2. 3-5 key takeaways, each 30-60 chars, specific and actionable\n"
+            "3. Target audience\n\n"
+            "Title: " + topic + "\n"
             "Tags: " + tag_str + "\n"
-            "Source: " + source + "\n\n"
-            "Output only the 3-5 bullet points, no other explanation:"
+            "Author: " + source + "\n\n"
+            "Output only the summary:"
         )
     try:
         resp = CLIENT.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=800 if subtitle else 300,
+            max_tokens=800 if subtitle else 500,
             temperature=0.7,
         )
         return resp.choices[0].message.content.strip()
@@ -462,7 +465,7 @@ async def process_url(url, cookie="", dry_run=False):
         result.success = True
         data = _load_json()
         for v in data.get("videos", []):
-            if aweme_id and aweme_id in v.get("file", ""):
+            if result.aweme_id and result.aweme_id in v.get("file", ""):
                 result.category = v.get("category", "")
                 result.date = v.get("date", "")
                 break
