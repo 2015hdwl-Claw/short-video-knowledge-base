@@ -110,15 +110,17 @@ def _generate_summary(title, tags, source, url, subtitle=""):
 
     if subtitle:
         prompt = (
-            "Based on the following short video content, generate 3-5 core points "
+            "Based on the following short video transcript, generate a detailed summary "
             "in Traditional Chinese.\n"
-            "Each point on its own line, starting with a number. "
-            "Concise and impactful, each point under 40 characters.\n\n"
+            "Structure:\n"
+            "1. 一句話總結（under 30 chars）\n"
+            "2. 5-8 個核心要點，每點 40-80 字，包含具體數據或方法\n"
+            "3. 可執行的建議（1-2 點）\n\n"
             "Title: " + topic + "\n"
             "Tags: " + tag_str + "\n"
             "Author: " + source + "\n"
-            "Subtitle/Transcript:\n" + subtitle[:2000] + "\n\n"
-            "Output only the 3-5 bullet points, no other explanation:"
+            "Transcript:\n" + subtitle[:3000] + "\n\n"
+            "Output only the summary, no other explanation:"
         )
     else:
         prompt = (
@@ -135,7 +137,7 @@ def _generate_summary(title, tags, source, url, subtitle=""):
         resp = CLIENT.chat.completions.create(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
+            max_tokens=800 if subtitle else 300,
             temperature=0.7,
         )
         return resp.choices[0].message.content.strip()
