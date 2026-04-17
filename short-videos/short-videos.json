@@ -1907,6 +1907,23 @@
       "core_points": "1. 打通灵感→原型→开发→审查→沉淀全流程\n2. 实现乘法级效率提升\n3. vibe coding核心是全链路工具串联",
       "note": "图文作品(1张图)，无视频可转录",
       "priority": "normal"
+    },
+    {
+      "file": "douyin-7625277537737157553.md",
+      "title": "3件事9个动作，从输入到输出，一起越来越强",
+      "date": "2026-01-16",
+      "source": "抖音 - 斌哥胡求说",
+      "url": "https://v.douyin.com/xbC6dkg3_NI/",
+      "url_status": "active",
+      "tags": [
+        "个人成长",
+        "认知",
+        "商业思维"
+      ],
+      "category": "个人成长",
+      "core_points": "1. 3件事9个动作，从输入到输出\n2. 一人公司认知升级\n3. 自我提升方法论",
+      "note": "Whisper转录被OOM kill，仅metadata报告",
+      "priority": "normal"
     }
   ]
 }
