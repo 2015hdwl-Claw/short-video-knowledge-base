@@ -49,8 +49,18 @@ class PipelineResult:
     statistics: dict = field(default_factory=dict)
     error: str = ""
 
+    COOKIE_EXPIRED_HINT = (
+        "\n\nCookie expired!\n"
+        "1. Open douyin.com in browser and log in\n"
+        "2. F12 > Application > Cookies > douyin.com\n"
+        "3. Select All > Copy\n"
+        "4. Update DOUYIN_COOKIE in Render Dashboard"
+    )
+
     def to_line_reply(self) -> str:
         if not self.success:
+            if "Cookie expired" in self.error or "Cookie" in self.error:
+                return "Cookie expired or invalid." + self.COOKIE_EXPIRED_HINT
             return "Error: " + self.error
         tags_str = ", ".join(self.tags[:5]) if self.tags else "N/A"
         points = self.core_points.strip().split("\n")[:5]
@@ -214,13 +224,25 @@ async def _fetch_metadata(url_or_id, cookie):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Cookie": cookie,
             })
+
+            # Detect cookie expiry
+            if resp.status_code in (401, 403):
+                print("  Cookie expired (HTTP " + str(resp.status_code) + ")", file=sys.stderr)
+                return {"_cookie_expired": True}
+
             resp.raise_for_status()
             data = resp.json()
 
+        # Check API-level error codes indicating cookie issues
+        api_code = data.get("status_code", 0)
+        if api_code in (2151, 2154, 2193):
+            print("  Cookie expired (API code " + str(api_code) + ")", file=sys.stderr)
+            return {"_cookie_expired": True}
+
         detail = data.get("aweme_detail")
         if not detail:
-            print("  No aweme_detail", file=sys.stderr)
-            return None
+            print("  No aweme_detail (possibly expired cookie)", file=sys.stderr)
+            return {"_cookie_expired": True}
 
         author = detail.get("author", {})
         stats = detail.get("statistics", {})
@@ -324,6 +346,15 @@ async def process_url(url, cookie="", dry_run=False):
     meta = await _fetch_metadata(url, cookie)
     if not meta:
         result.error = "Failed to fetch metadata"
+        return result
+    if meta.get("_cookie_expired"):
+        result.error = (
+            "Cookie expired or invalid.\n"
+            "How to update:\n"
+            "1. Open douyin.com in browser and log in\n"
+            "2. F12 -> Application -> Cookies -> www.douyin.com -> Select All\n"
+            "3. Copy and update DOUYIN_COOKIE in Render Dashboard"
+        )
         return result
 
     result.aweme_id = meta.get("aweme_id", "")
