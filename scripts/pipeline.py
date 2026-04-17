@@ -48,6 +48,7 @@ class PipelineResult:
     date: str = ""
     statistics: dict = field(default_factory=dict)
     error: str = ""
+    has_subtitle: bool = False
 
     COOKIE_EXPIRED_HINT = (
         "\n\nCookie expired!\n"
@@ -100,22 +101,36 @@ def _save_json(data: dict) -> None:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def _generate_summary(title, tags, source, url):
+def _generate_summary(title, tags, source, url, subtitle=""):
     if not CLIENT:
         return ""
     topic = re.sub(r"^[\u5c0f\u7d05\u66f8_]+", "", title)
     topic = re.sub(r"_\d{8}_\d{6}_\d+$", "", topic).strip()
     tag_str = ", ".join(tags) if tags else "none"
-    prompt = (
-        "Based on the following short video topic, generate 3-5 core points "
-        "in Traditional Chinese.\n"
-        "Each point on its own line, starting with a number. "
-        "Concise and impactful, each point under 40 characters.\n\n"
-        "Topic: " + topic + "\n"
-        "Tags: " + tag_str + "\n"
-        "Source: " + source + "\n\n"
-        "Output only the 3-5 bullet points, no other explanation:"
-    )
+
+    if subtitle:
+        prompt = (
+            "Based on the following short video content, generate 3-5 core points "
+            "in Traditional Chinese.\n"
+            "Each point on its own line, starting with a number. "
+            "Concise and impactful, each point under 40 characters.\n\n"
+            "Title: " + topic + "\n"
+            "Tags: " + tag_str + "\n"
+            "Author: " + source + "\n"
+            "Subtitle/Transcript:\n" + subtitle[:2000] + "\n\n"
+            "Output only the 3-5 bullet points, no other explanation:"
+        )
+    else:
+        prompt = (
+            "Based on the following short video topic, generate 3-5 core points "
+            "in Traditional Chinese.\n"
+            "Each point on its own line, starting with a number. "
+            "Concise and impactful, each point under 40 characters.\n\n"
+            "Topic: " + topic + "\n"
+            "Tags: " + tag_str + "\n"
+            "Source: " + source + "\n\n"
+            "Output only the 3-5 bullet points, no other explanation:"
+        )
     try:
         resp = CLIENT.chat.completions.create(
             model=MODEL,
@@ -271,11 +286,75 @@ async def _fetch_metadata(url_or_id, cookie):
         return None
 
 
+def _fetch_subtitles(url):
+    """Extract subtitles from video using yt-dlp (--skip-download, no Whisper needed)."""
+    try:
+        import tempfile
+        import yt_dlp
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ydl_opts = {
+                "writesubtitles": True,
+                "writeautomaticsub": True,
+                "subtitleslangs": ["zh", "zh-Hans", "zh-TW", "zh-CN", "en"],
+                "skip_download": True,
+                "outtmpl": tmpdir + "/sub",
+                "quiet": True,
+                "no_warnings": True,
+                "extractor_args": {"douyin": {"player_client": ["web"]}},
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+
+            for f in sorted(Path(tmpdir).iterdir()):
+                if f.suffix in (".srt", ".vtt", ".srv1", ".srv2", ".srv3"):
+                    text = _parse_subtitle_file(f)
+                    if text and len(text) > 20:
+                        return text
+    except Exception as e:
+        print("  Subtitle extraction failed: " + str(e), file=sys.stderr)
+    return ""
+
+
+def _parse_subtitle_file(path):
+    """Parse SRT/VTT subtitle file to plain text."""
+    content = path.read_text(encoding="utf-8", errors="replace")
+    lines = content.strip().split("\n")
+    texts = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if re.match(r"^\d+$", line):
+            continue
+        if re.match(r"[\d:,.\-]+ --> [\d:,.\-]+$", line):
+            continue
+        if line.startswith(("WEBVTT", "Kind:", "Language:", "#")):
+            continue
+        cleaned = re.sub(r"<[^>]+>", "", line)
+        if cleaned and len(cleaned) > 1:
+            texts.append(cleaned)
+    return " ".join(texts)
+
+
 def _fill_content(meta):
     title = meta.get("title", "")
     tags = meta.get("tags", [])
     author = meta.get("author", "")
-    summary = _generate_summary(title, tags, author, meta.get("url", ""))
+    url = meta.get("url", "")
+
+    subtitle = ""
+    if url:
+        print("  Extracting subtitles...")
+        subtitle = _fetch_subtitles(url)
+        if subtitle:
+            print("  Subtitle found: " + subtitle[:50] + "...")
+            meta["_subtitle"] = True
+            meta["_subtitle_text"] = subtitle
+        else:
+            print("  No subtitle available, using description only")
+
+    summary = _generate_summary(title, tags, author, url, subtitle)
     return summary if summary else meta.get("desc_full", "")[:200]
 
 
@@ -342,7 +421,7 @@ async def process_url(url, cookie="", dry_run=False):
         if not cookie:
             cookie = os.getenv("DOUYIN_COOKIE", "")
 
-    print("[1/3] Fetching metadata...")
+    print("[1/4] Fetching metadata...")
     meta = await _fetch_metadata(url, cookie)
     if not meta:
         result.error = "Failed to fetch metadata"
@@ -365,15 +444,17 @@ async def process_url(url, cookie="", dry_run=False):
     print("  Title: " + result.title[:50])
     print("  Author: " + result.author)
 
-    print("[2/3] Generating summary...")
+    print("[2/4] Extracting subtitles...")
+    print("[3/4] Generating summary...")
     summary = _fill_content(meta)
     result.core_points = summary
+    result.has_subtitle = bool(meta.get("_subtitle", False))
 
     if dry_run:
         result.success = True
         return result
 
-    print("[3/3] Saving...")
+    print("[4/4] Saving...")
     ok = _save_video(meta, summary)
     if ok:
         result.success = True

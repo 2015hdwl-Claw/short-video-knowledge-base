@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: short-video-kb
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: CLASSIFIER_API_KEY
+        sync: false
+      - key: CLASSIFIER_BASE_URL
+        value: https://open.bigmodel.cn/api/paas/v4/
+      - key: CLASSIFIER_MODEL
+        value: glm-4.7-flash
+      - key: DOUYIN_COOKIE
+        sync: false
+    healthCheckPath: /health
+    branch: main
