@@ -268,6 +268,7 @@ async def _fetch_metadata(url_or_id, cookie):
         stats = detail.get("statistics", {})
         desc = detail.get("desc", "")
         tags = re.findall(r"#([^#\s]+)#?", desc)
+        video = detail.get("video", {})
 
         return {
             "aweme_id": aweme_id,
@@ -276,6 +277,8 @@ async def _fetch_metadata(url_or_id, cookie):
             "tags": tags if tags else [],
             "core_points": desc.strip(),
             "desc_full": desc,
+            "video_url": video.get("play_addr", {}).get("url_list", [""])[0],
+            "duration": video.get("duration", 0),
             "statistics": {
                 "digg_count": stats.get("digg_count", 0),
                 "comment_count": stats.get("comment_count", 0),
@@ -321,6 +324,59 @@ def _fetch_subtitles(url):
     return ""
 
 
+def _transcribe_whisper(video_url, duration_ms=0):
+    """Download video via API URL and transcribe with faster-whisper.
+
+    Uses the video_url from Douyin API (aBogus signed), not yt-dlp.
+    Requires local machine with 2GB+ RAM.
+    """
+    try:
+        import tempfile
+        import subprocess
+        from faster_whisper import WhisperModel
+
+        if not video_url:
+            return ""
+
+        # Skip videos longer than 10 minutes (Whisper too slow)
+        if duration_ms and duration_ms > 600000:
+            print(f"  Video too long ({duration_ms/1000:.0f}s), skipping Whisper", file=sys.stderr)
+            return ""
+
+        print("  Downloading audio for Whisper...")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            audio_path = Path(tmpdir) / "audio.mp4"
+            import httpx
+            with httpx.Client(timeout=120, follow_redirects=True, verify=False) as client:
+                resp = client.get(video_url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Referer": "https://www.douyin.com/",
+                })
+                resp.raise_for_status()
+                audio_path.write_bytes(resp.content)
+
+            if audio_path.stat().st_size < 1000:
+                print("  Download failed or empty", file=sys.stderr)
+                return ""
+
+            print(f"  Audio downloaded: {audio_path.stat().st_size/1024/1024:.1f}MB")
+            print("  Running Whisper (tiny, Chinese)...")
+            model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            segments, info = model.transcribe(
+                str(audio_path), language="zh", beam_size=3,
+                condition_on_previous_text=False,
+            )
+            text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
+            print(f"  Whisper done: {len(text)} chars")
+            return text
+    except ImportError:
+        print("  faster-whisper not installed, skipping", file=sys.stderr)
+        return ""
+    except Exception as e:
+        print("  Whisper failed: " + str(e), file=sys.stderr)
+        return ""
+
+
 def _parse_subtitle_file(path):
     """Parse SRT/VTT subtitle file to plain text."""
     content = path.read_text(encoding="utf-8", errors="replace")
@@ -357,7 +413,17 @@ def _fill_content(meta):
             meta["_subtitle"] = True
             meta["_subtitle_text"] = subtitle
         else:
-            print("  No subtitle available, using description only")
+            print("  No subtitle, trying Whisper transcription...")
+            video_url = meta.get("video_url", "")
+            duration = meta.get("duration", 0)
+            subtitle = _transcribe_whisper(video_url, duration)
+            if subtitle:
+                print("  Whisper transcript: " + subtitle[:50] + "...")
+                meta["_subtitle"] = True
+                meta["_subtitle_text"] = subtitle
+                meta["_whisper"] = True
+            else:
+                print("  No transcript available, using description only")
 
     summary = _generate_summary(title, tags, author, url, subtitle)
     return summary if summary else meta.get("desc_full", "")[:200]
