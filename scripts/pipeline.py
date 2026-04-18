@@ -398,34 +398,160 @@ def _parse_subtitle_file(path):
     return " ".join(texts)
 
 
+def _extract_keyframes(video_url, max_frames=5):
+    """Download video and extract keyframes using ffmpeg.
+
+    Returns list of frame file paths, or empty list on failure.
+    """
+    try:
+        import tempfile
+        import subprocess
+        import httpx
+
+        if not video_url:
+            return []
+
+        print("  Downloading video for keyframe extraction...")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = Path(tmpdir) / "video.mp4"
+            with httpx.Client(timeout=60, follow_redirects=True, verify=False) as client:
+                resp = client.get(video_url, headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                    "Referer": "https://www.douyin.com/",
+                })
+                resp.raise_for_status()
+                video_path.write_bytes(resp.content)
+
+            if video_path.stat().st_size < 1000:
+                print("  Video download failed", file=sys.stderr)
+                return []
+
+            print(f"  Video: {video_path.stat().st_size/1024/1024:.1f}MB")
+
+            # Get video duration
+            probe = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)],
+                capture_output=True, text=True, timeout=15,
+            )
+            try:
+                duration = float(probe.stdout.strip())
+            except ValueError:
+                duration = 60
+
+            # Calculate frame intervals
+            interval = max(1, int(duration / (max_frames + 1)))
+            frames = []
+            for i in range(max_frames):
+                ts = i * interval
+                frame_path = Path(tmpdir) / f"frame_{i}.jpg"
+                result = subprocess.run(
+                    ["ffmpeg", "-y", "-ss", str(ts), "-i", str(video_path),
+                     "-frames:v", "1", "-q:v", "4",
+                     "-vf", "scale=640:-1",
+                     str(frame_path)],
+                    capture_output=True, text=True, timeout=15,
+                )
+                if result.returncode == 0 and frame_path.exists():
+                    frames.append(frame_path)
+
+            print(f"  Extracted {len(frames)} keyframes")
+            return frames
+    except FileNotFoundError:
+        print("  ffmpeg not found", file=sys.stderr)
+        return []
+    except Exception as e:
+        print("  Keyframe extraction failed: " + str(e), file=sys.stderr)
+        return []
+
+
+def _analyze_keyframes(frame_paths, title=""):
+    """Send keyframes to GLM-4V for content analysis."""
+    if not frame_paths or not CLIENT:
+        return ""
+    try:
+        import base64
+
+        content_parts = [{"type": "text", "text": (
+            "Analyze these keyframes from a short video. "
+            "Extract ALL visible text (titles, subtitles, bullet points, captions). "
+            "Describe what is being presented (slides, demo, talking head, etc.).\n"
+            "Output a detailed content summary in Traditional Chinese, structured as:\n"
+            "1. 一句話總結\n"
+            "2. 影片中的可見文字（逐字提取）\n"
+            "3. 畫面內容描述\n"
+            "4. 3-5 個核心要點（每點 40-80 字）\n\n"
+            "Video title: " + title + "\n"
+        )}]
+        for fp in frame_paths:
+            b64 = base64.b64encode(fp.read_bytes()).decode("utf-8")
+            content_parts.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+            })
+
+        print(f"  Sending {len(frame_paths)} frames to GLM-4V...")
+        vlm_client = OpenAI(
+            api_key=API_KEY,
+            base_url=BASE_URL,
+        )
+        resp = vlm_client.chat.completions.create(
+            model="glm-4v-flash",
+            messages=[{"role": "user", "content": content_parts}],
+            max_tokens=1000,
+            temperature=0.3,
+        )
+        text = resp.choices[0].message.content.strip()
+        print(f"  GLM-4V analysis: {len(text)} chars")
+        return text
+    except Exception as e:
+        print("  GLM-4V analysis failed: " + str(e), file=sys.stderr)
+        return ""
+
+
 def _fill_content(meta):
     title = meta.get("title", "")
     tags = meta.get("tags", [])
     author = meta.get("author", "")
     url = meta.get("url", "")
+    video_url = meta.get("video_url", "")
+    duration = meta.get("duration", 0)
 
-    subtitle = ""
+    content = ""
+    source = ""
+
     if url:
-        print("  Extracting subtitles...")
-        subtitle = _fetch_subtitles(url)
-        if subtitle:
-            print("  Subtitle found: " + subtitle[:50] + "...")
-            meta["_subtitle"] = True
-            meta["_subtitle_text"] = subtitle
-        else:
-            print("  No subtitle, trying Whisper transcription...")
-            video_url = meta.get("video_url", "")
-            duration = meta.get("duration", 0)
-            subtitle = _transcribe_whisper(video_url, duration)
-            if subtitle:
-                print("  Whisper transcript: " + subtitle[:50] + "...")
-                meta["_subtitle"] = True
-                meta["_subtitle_text"] = subtitle
-                meta["_whisper"] = True
-            else:
-                print("  No transcript available, using description only")
+        # Priority 1: yt-dlp subtitles (fastest, rare)
+        print("  [1] Trying yt-dlp subtitles...")
+        content = _fetch_subtitles(url)
+        if content:
+            source = "subtitle"
+            print("  Subtitle found: " + content[:50] + "...")
 
-    summary = _generate_summary(title, tags, author, url, subtitle)
+        # Priority 2: GLM-4V keyframe analysis (3-5s, most videos)
+        if not content and video_url:
+            print("  [2] Trying GLM-4V keyframe analysis...")
+            frames = _extract_keyframes(video_url)
+            if frames:
+                content = _analyze_keyframes(frames, title)
+                if content:
+                    source = "keyframe_vlm"
+                    print("  GLM-4V success: " + content[:50] + "...")
+
+        # Priority 3: Whisper transcription (local only, slow)
+        if not content and video_url:
+            print("  [3] Trying Whisper transcription...")
+            content = _transcribe_whisper(video_url, duration)
+            if content:
+                source = "whisper"
+                print("  Whisper success: " + content[:50] + "...")
+
+    if content:
+        meta["_subtitle"] = True
+        meta["_subtitle_text"] = content
+        meta["_content_source"] = source
+
+    summary = _generate_summary(title, tags, author, url, content)
     return summary if summary else meta.get("desc_full", "")[:200]
 
 
@@ -515,7 +641,7 @@ async def process_url(url, cookie="", dry_run=False):
     print("  Title: " + result.title[:50])
     print("  Author: " + result.author)
 
-    print("[2/4] Extracting subtitles...")
+    print("[2/4] Extracting content (subtitle → keyframe → whisper)...")
     print("[3/4] Generating summary...")
     summary = _fill_content(meta)
     result.core_points = summary
