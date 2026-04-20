@@ -2699,7 +2699,10 @@
       "category": "科技",
       "core_points": "Cursor+Claude组合拳一个人顶一个团队 3天干完4个人两周的活？这套Cursor+Claude组合拳我实测有效。不是工具不行，是你分工错了——Claude当大脑，Cursor当双手，规则写进cursorrules，代码质量直接起飞。 #AI编程神器  #Cursor避坑指南  #独立开发者  #效率翻倍  #编程干货",
       "note": "批量处理metadata报告",
-      "priority": "normal"
+      "priority": "normal",
+      "advice": "1. 讓Claude擔任架構設計與邏輯決策的「大腦」，專注於需求分析、架構規劃與程式碼審查；2. 將Cursor作為執行的「雙手」，專注於快速生成、編輯與重構程式碼；3. 建立明確的cursorrules文件，規範代碼風格、架構模式與錯誤處理標準，讓AI輸出一致性大幅提升；4. 每日用Claude複盤程式碼品質，並根據反饋迭代rules，形成自動優化循環。",
+      "audience": "- 獨立開發者、小型創業團隊、想用AI大幅提升產出的工程師、對傳統開發流程感到效率瓶頸的技術創作者",
+      "personal_insight": "不是AI太弱，是你沒讓它們各司其職——Claude想，Cursor做，規則定死，效率自然爆炸。"
     },
     {
       "title": "粉丝盒子升级扩容 帮粉丝刷机扩容#机顶盒刷机 #扩容 #智能家居智能生活",
