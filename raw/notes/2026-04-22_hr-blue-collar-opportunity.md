@@ -1,7 +1,9 @@
 # 藍領HR痛點 × 商機觀察
 
 **日期**：2026-04-22
-**來源**：PTT 萬里無雲版（HR Supervisor 20年經驗分享）
+**來源**：
+- PTT 萬里無雲版（HR Supervisor 20年經驗分享）
+- DCard 人資板：https://www.dcard.tw/f/human_resource/p/261283282
 **標籤**：HR SaaS, 藍領管理, 排班系統, 勞資爭議, 職涯平台, 倉儲物流
 **觀察框架**：Steve Jobs — Focus = Saying No / The Whole Widget / Death Filter
 
@@ -119,8 +121,18 @@ HR Supervisor 說了一句關鍵話：「大部分的精力都在處理問題，
 
 ---
 
+## DCard 回覆（市場驗證用）
+
+### 回覆策略
+用「觀察者」而非「創業者」的角度分享，測試三個假設：
+1. 藍領HR真的80%時間在處理問題嗎？
+2. 現有工具（101、鼎新、Workday）真的不適合倉儲場景嗎？
+3. 如果有一體化工具，願意付費嗎？
+
+---
+
 ## 參考資料
 
-- 原始貼文來源：PTT 萬里無雲版（2026-04-12）
+- 原始貼文來源：PTT 萬里無雲版（2026-04-12）、DCard 人資版（2026-04）
 - 分析框架：Steve Jobs 心智模型（Focus = Saying No / The Whole Widget / Connecting the Dots）
 - 市場背景：台灣電商倉儲物流業持續擴張，HR工具數位化程度低
