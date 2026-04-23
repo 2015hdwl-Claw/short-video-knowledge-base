@@ -692,7 +692,33 @@ def _save_video(meta, summary):
     data["videos"] = videos
     _save_json(data)
     _trigger_wiki_rebuild()
+    _git_sync("Add video: " + title[:40])
     return True
+
+
+
+def _git_sync(message):
+    """Commit and push changes to GitHub repo."""
+    import subprocess
+
+    github_token = os.getenv("GITHUB_TOKEN", "")
+    if not github_token:
+        return
+
+    try:
+        subprocess.run(["git", "config", "user.name", "bot"], cwd=REPO, capture_output=True, timeout=10)
+        subprocess.run(["git", "config", "user.email", "bot@auto"], cwd=REPO, capture_output=True, timeout=10)
+        subprocess.run(["git", "add", "short-videos.json", "short-videos/short-videos.json"], cwd=REPO, capture_output=True, timeout=10)
+        subprocess.run(["git", "commit", "-m", message], cwd=REPO, capture_output=True, timeout=10)
+
+        # Push with token auth
+        remote = os.getenv("GIT_REMOTE", "origin")
+        repo_slug = os.getenv("GITHUB_REPO", "2015hdwl-Claw/short-video-knowledge-base")
+        push_url = f"https://{github_token}@github.com/{repo_slug}.git"
+        subprocess.run(["git", "push", push_url, "main"], cwd=REPO, capture_output=True, timeout=30)
+        print("  Git sync done")
+    except Exception as e:
+        print(f"  Git sync skipped: {e}", file=sys.stderr)
 
 
 def _trigger_wiki_rebuild():

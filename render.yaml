@@ -21,5 +21,9 @@ services:
         sync: false
       - key: NVIDIA_API_KEY
         sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: 2015hdwl-Claw/short-video-knowledge-base
     healthCheckPath: /health
     branch: main
