@@ -698,25 +698,43 @@ def _save_video(meta, summary):
 
 
 def _git_sync(message):
-    """Commit and push changes to GitHub repo."""
-    import subprocess
+    """Commit and push changes to GitHub repo via API."""
+    import base64
 
     github_token = os.getenv("GITHUB_TOKEN", "")
     if not github_token:
+        print("  Git sync skipped: no GITHUB_TOKEN", file=sys.stderr)
         return
 
-    try:
-        subprocess.run(["git", "config", "user.name", "bot"], cwd=REPO, capture_output=True, timeout=10)
-        subprocess.run(["git", "config", "user.email", "bot@auto"], cwd=REPO, capture_output=True, timeout=10)
-        subprocess.run(["git", "add", "short-videos.json", "short-videos/short-videos.json"], cwd=REPO, capture_output=True, timeout=10)
-        subprocess.run(["git", "commit", "-m", message], cwd=REPO, capture_output=True, timeout=10)
+    repo_slug = os.getenv("GITHUB_REPO", "2015hdwl-Claw/short-video-knowledge-base")
+    api_url = f"https://api.github.com/repos/{repo_slug}/contents/short-videos.json"
 
-        # Push with token auth
-        remote = os.getenv("GIT_REMOTE", "origin")
-        repo_slug = os.getenv("GITHUB_REPO", "2015hdwl-Claw/short-video-knowledge-base")
-        push_url = f"https://{github_token}@github.com/{repo_slug}.git"
-        subprocess.run(["git", "push", push_url, "main"], cwd=REPO, capture_output=True, timeout=30)
-        print("  Git sync done")
+    try:
+        import httpx
+
+        headers = {"Authorization": f"Bearer {github_token}", "User-Agent": "svkb-bot"}
+        resp = httpx.get(api_url, headers=headers, timeout=15)
+        sha = resp.json().get("sha", "")
+
+        for p in JSON_PATHS:
+            if p.exists():
+                local_content = p.read_bytes()
+                break
+        else:
+            print("  Git sync skipped: no local JSON", file=sys.stderr)
+            return
+
+        b64 = base64.b64encode(local_content).decode("ascii")
+        resp = httpx.put(api_url, headers=headers, timeout=30, json={
+            "message": message,
+            "content": b64,
+            "sha": sha,
+        })
+
+        if resp.status_code in (200, 201):
+            print("  Git sync done (API)")
+        else:
+            print(f"  Git sync failed: {resp.status_code} {resp.text[:100]}", file=sys.stderr)
     except Exception as e:
         print(f"  Git sync skipped: {e}", file=sys.stderr)
 
