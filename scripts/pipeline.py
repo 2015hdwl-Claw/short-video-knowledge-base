@@ -235,7 +235,7 @@ async def _fetch_via_bugpk(url_or_id):
         author = d.get("author", {})
         extra = d.get("extra", {})
         tags = extra.get("video_tags", []) or extra.get("hashtags", [])
-        tags = [t.get("tag_name", t) if isinstance(t, dict) else str(t) for t in tags]
+        tags = [t.get("name", str(t)) if isinstance(t, dict) else str(t) for t in tags]
         stats = extra.get("statistics", {})
 
         return {
