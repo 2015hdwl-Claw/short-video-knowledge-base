@@ -119,7 +119,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("處理中，請稍候...")
 
     try:
-        result = await process_url(url)
+        import asyncio
+        result = await asyncio.wait_for(
+            process_url(url),
+            timeout=90,
+        )
 
         if result.success:
             reply = result.to_line_reply()
@@ -135,6 +139,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             else:
                 await update.message.reply_text(f"處理失敗：{error_msg}")
+    except asyncio.TimeoutError:
+        await update.message.reply_text("處理逾時（90秒），請稍後再試。")
     except Exception as e:
         await update.message.reply_text(f"處理失敗：{e}")
 
