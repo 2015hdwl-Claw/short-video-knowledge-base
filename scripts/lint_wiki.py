@@ -7,13 +7,13 @@
 
 import os
 import sys
+from glm_limiter import rate_limited_call
 import json
+from glm_limiter import rate_limited_call
 import re
 import glob
 import time
 import argparse
-
-import requests
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -23,10 +23,7 @@ CONCEPTS_DIR = os.path.join(REPO, 'wiki', 'concepts')
 JSON_PATH = os.path.join(REPO, 'short-videos', 'short-videos.json')
 REPORT_PATH = os.path.join(REPO, 'wiki', 'lint-report.md')
 
-# GLM API config — uses env vars with sensible defaults
-API_KEY = os.getenv('CLASSIFIER_API_KEY', '')
-BASE_URL = os.getenv('CLASSIFIER_BASE_URL', 'https://open.bigmodel.cn/api/paas/v4/')
-MODEL = os.getenv('CLASSIFIER_MODEL', 'glm-4.7-flash')
+# LLM calls routed through glm_limiter.py (rate limiting + dual provider)
 
 SEMANTIC_PROMPT = """你是知識庫矛盾偵測專家。分析以下兩段短影音摘要，判斷是否存在真正的邏輯矛盾。
 「矛盾」定義：對同一事實或結論提出不可並存的說法。
@@ -133,27 +130,12 @@ def find_potential_contradictions(videos):
 
 
 def _call_llm_for_contradiction(title1, cp1, title2, cp2):
-    """Send a single pair to GLM and return parsed JSON result."""
+    """Send a single pair to LLM via rate_limited_call and return parsed JSON result."""
     prompt = SEMANTIC_PROMPT.format(title1=title1, cp1=cp1[:500], title2=title2, cp2=cp2[:500])
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.1,
-        "response_format": {"type": "json_object"},
-    }
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
-    }
-    resp = requests.post(
-        f"{BASE_URL}chat/completions",
-        headers=headers,
-        json=payload,
-        timeout=30,
-    )
-    resp.raise_for_status()
-    text = resp.json()["choices"][0]["message"]["content"]
-    return json.loads(text)
+    messages = [{"role": "user", "content": prompt}]
+    resp = rate_limited_call(messages, max_tokens=500, temperature=0.1,
+                             response_format={"type": "json_object"})
+    return json.loads(resp.choices[0].message.content)
 
 
 def find_semantic_contradictions(videos):
@@ -164,8 +146,9 @@ def find_semantic_contradictions(videos):
     """
     from collections import defaultdict
 
-    if not API_KEY:
-        print("  [semantic] No CLASSIFIER_API_KEY set, skipping LLM detection")
+    import os as _os
+    if not _os.getenv("CLASSIFIER_API_KEY") and not _os.getenv("NVIDIA_API_KEY"):
+        print("  [semantic] No LLM API key set, skipping detection")
         return []
 
     by_cat = defaultdict(list)

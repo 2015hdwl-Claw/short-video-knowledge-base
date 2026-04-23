@@ -49,17 +49,17 @@ class TokenBucket:
         self._lock = threading.Lock()
 
     def acquire(self):
-        with self._lock:
-            now = time.monotonic()
-            elapsed = now - self._last
-            self._tokens = min(self.capacity, self._tokens + elapsed * self.rate)
-            self._last = now
-            if self._tokens >= 1.0:
-                self._tokens -= 1.0
-                return
-            wait = (1.0 - self._tokens) / self.rate
-        time.sleep(wait)
-        self.acquire()
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                elapsed = now - self._last
+                self._tokens = min(self.capacity, self._tokens + elapsed * self.rate)
+                self._last = now
+                if self._tokens >= 1.0:
+                    self._tokens -= 1.0
+                    return
+                wait = (1.0 - self._tokens) / self.rate
+            time.sleep(wait)
 
 
 _bucket = TokenBucket(rate=0.5, capacity=5)
@@ -184,3 +184,16 @@ if __name__ == "__main__":
         if info["last_error"]:
             parts.append("err=" + info["last_error"][:60])
         print(" | ".join(parts))
+
+
+def extract_llm_content(resp):
+    """Extract content from LLM response, handling thinking mode.
+    
+    GLM thinking models put reasoning in reasoning_content field,
+    leaving content empty. This fallback handles both cases.
+    """
+    msg = resp.choices[0].message
+    text = msg.content or ""
+    if not text.strip() and hasattr(msg, "reasoning_content") and msg.reasoning_content:
+        text = msg.reasoning_content
+    return text

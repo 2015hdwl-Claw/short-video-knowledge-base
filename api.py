@@ -32,6 +32,10 @@ from pipeline import process_url, process_missing, PipelineResult
 
 ADMIN_URL = "https://2015hdwl-claw.github.io/short-video-knowledge-base/admin.html"
 API_KEY = os.getenv("API_KEY", "")
+TIMEOUT_DEFAULT = 60
+TIMEOUT_WIKI_REBUILD = 120
+TIMEOUT_DEFAULT = 60
+TIMEOUT_WIKI_REBUILD = 120
 WIKI_DIR = REPO / "wiki"
 
 app = FastAPI(title="Short Video Knowledge Base API", version="2.0.0")
@@ -115,7 +119,7 @@ async def api_process(req: ProcessRequest):
 @app.post("/api/process/missing")
 async def api_process_missing(dry_run: bool = False):
     cookie = os.getenv("DOUYIN_COOKIE", "")
-    results = await asyncio.to_thread(process_missing, cookie, dry_run=dry_run)
+    results = await asyncio.wait_for(asyncio.to_thread(process_missing, cookie, dry_run=dry_run), timeout=TIMEOUT_DEFAULT)
     return {
         "processed": len(results),
         "results": [
@@ -133,9 +137,9 @@ async def api_process_missing(dry_run: bool = False):
 async def api_query(req: QueryRequest):
     """Knowledge query engine: BM25 retrieval + LLM synthesis."""
     from query_engine import query_knowledge_base
-    result = await asyncio.to_thread(
+    result = await asyncio.wait_for(asyncio.to_thread(
         query_knowledge_base, req.question, req.limit
-    )
+    ), timeout=TIMEOUT_DEFAULT)
     return {"success": True, **result}
 
 
@@ -153,7 +157,7 @@ async def api_search(req: SearchRequest):
             search_wiki, req.query, req.limit
         )
     if req.search_type == "all":
-        merged = await asyncio.to_thread(search_all, req.query, req.limit)
+        merged = await asyncio.wait_for(asyncio.to_thread(search_all, req.query, req.limit), timeout=TIMEOUT_DEFAULT)
         results["merged"] = merged
     return {"success": True, "results": results}
 
@@ -171,7 +175,7 @@ async def api_rebuild_wiki(v2: bool = False):
         pages = list(concepts_dir.glob("*.md")) if concepts_dir.exists() else []
         return len(pages)
 
-    pages_rebuilt = await asyncio.to_thread(_rebuild)
+    pages_rebuilt = await asyncio.wait_for(asyncio.to_thread(_rebuild), timeout=TIMEOUT_WIKI_REBUILD)
     return {"success": True, "pages_rebuilt": pages_rebuilt}
 
 
@@ -182,7 +186,7 @@ async def api_weekly_digest():
         from weekly_digest import generate_weekly_digest
         return generate_weekly_digest(dry_run=False)
 
-    result = await asyncio.to_thread(_digest)
+    result = await asyncio.wait_for(asyncio.to_thread(_digest), timeout=TIMEOUT_DEFAULT)
     return {"success": True, **result}
 
 
@@ -210,5 +214,5 @@ async def api_webhook_weekly_digest():
         from weekly_digest import generate_weekly_digest
         return generate_weekly_digest(dry_run=False)
 
-    result = await asyncio.to_thread(_run)
+    result = await asyncio.wait_for(asyncio.to_thread(_run), timeout=TIMEOUT_DEFAULT)
     return {"success": True, "digest_path": result.get("digest_path"), "new_count": result.get("new_count", 0), "total": result.get("total", 0)}

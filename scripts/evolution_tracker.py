@@ -36,14 +36,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from glm_limiter import rate_limited_call
 
 
-def _extract_llm_content(resp):
-    msg = resp.choices[0].message
-    content = msg.content or ""
-    if not content.strip() and hasattr(msg, "reasoning_content") and msg.reasoning_content:
-        content = msg.reasoning_content
-    return content
-
-
 def _load_videos():
     """Load all videos from short-videos.json."""
     if not JSON_PATH.exists():

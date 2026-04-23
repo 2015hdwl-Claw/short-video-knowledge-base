@@ -107,14 +107,6 @@ DETECT_PROMPT = """以下是 {count} 段短影音摘要。判斷哪些包含值�
 影片資料：
 {formatted_videos}"""
 
-def _extract_llm_content(resp):
-    msg = resp.choices[0].message
-    content = msg.content or ""
-    if not content.strip() and hasattr(msg, "reasoning_content") and msg.reasoning_content:
-        content = msg.reasoning_content
-    return content
-
-
 def _call_llm(prompt):
     messages = [{"role": "user", "content": prompt}]
     resp = _rate_limited_call(
