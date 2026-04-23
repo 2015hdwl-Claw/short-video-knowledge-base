@@ -590,31 +590,21 @@ def _fill_content(meta):
     url = meta.get("url", "")
     video_url = meta.get("video_url", "")
     duration = meta.get("duration", 0)
-
+    desc = meta.get("desc_full", "")
+    audio_path = None
     content = ""
     source = ""
 
-    if url:
-        # Priority 1: yt-dlp subtitles (fastest, rare)
-        print("  [1] Trying yt-dlp subtitles...")
-        content = _fetch_subtitles(url)
-        if content:
-            source = "subtitle"
-            print("  Subtitle found: " + content[:50] + "...")
+    # If we already have a good description from metadata, use it directly
+    if desc and len(desc) > 50:
+        print("  Using metadata description (skip download)")
+        source = "metadata"
+        content = desc
 
-        # Priority 2: GLM-4V keyframe analysis (3-5s, most videos)
-        if not content and video_url:
-            print("  [2] Trying GLM-4V keyframe analysis...")
-            frames = _extract_keyframes(video_url)
-            if frames:
-                content = _analyze_keyframes(frames, title)
-                if content:
-                    source = "keyframe_vlm"
-                    print("  GLM-4V success: " + content[:50] + "...")
-
-        # Priority 3: Groq Whisper API (fast, accurate)
-        if not content and video_url:
-            print("  [3] Downloading audio for transcription...")
+    if not content and url:
+        # Priority 1: Groq Whisper API (skip yt-dlp and keyframes to save memory)
+        if video_url:
+            print("  [1] Downloading audio for Groq Whisper...")
             audio_path = _download_audio(video_url)
             if audio_path:
                 content = _transcribe_groq(audio_path, duration)
@@ -622,20 +612,13 @@ def _fill_content(meta):
                     source = "groq_whisper"
                     print("  Groq success: " + content[:50] + "...")
 
-        # Priority 4: Local Whisper fallback (slow, tiny model)
-        if not content and audio_path:
-            print("  [4] Trying local Whisper fallback...")
-            content = _transcribe_whisper_local(audio_path, duration)
-            if content:
-                source = "whisper_local"
-                print("  Local Whisper success: " + content[:50] + "...")
-
-        # Cleanup temp audio
+        # Cleanup temp audio immediately
         if audio_path:
             try:
                 audio_path.unlink(missing_ok=True)
             except Exception:
                 pass
+            audio_path = None
 
     if content:
         meta["_subtitle"] = True
@@ -643,7 +626,7 @@ def _fill_content(meta):
         meta["_content_source"] = source
 
     summary = _generate_summary(title, tags, author, url, content)
-    return summary if summary else meta.get("desc_full", "")[:200]
+    return summary if summary else (desc[:200] if desc else "")
 
 
 def _save_video(meta, summary):
