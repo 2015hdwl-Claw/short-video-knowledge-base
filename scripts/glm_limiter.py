@@ -25,7 +25,7 @@ from openai import OpenAI
 PROVIDERS = {
     "nvidia": {
         "base_url": "https://integrate.api.nvidia.com/v1/",
-        "model": "z-ai/glm-4.7",
+        "model": "google/gemma-3-4b-it",
         "env_key": "NVIDIA_API_KEY",
         "fallback_key": "",
     },
