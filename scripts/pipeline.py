@@ -185,108 +185,68 @@ def _classify_category(tags, title, core_points):
         return "個人成長"
 
 
-async def _fetch_metadata(url_or_id, cookie):
+async def _fetch_metadata(url_or_id, cookie=""):
+    """Fetch video metadata via BugPk API (no cookie needed).
+
+    Falls back to Xinyew API if BugPk fails.
+    """
     try:
-        from urllib.parse import urlencode, quote
-
-        crypto_path = os.environ.get("DOUNIK_PATH", "")
-        if not crypto_path:
-            local = REPO / "tools" / "douyin-downloader"
-            if local.is_dir():
-                crypto_path = str(local)
-        if not crypto_path:
-            print("  No crypto modules found", file=sys.stderr)
-            return None
-
-        if crypto_path not in sys.path:
-            sys.path.insert(0, os.path.abspath(crypto_path))
-        from src.encrypt.aBogus import ABogus
         import httpx
 
-        ab = ABogus()
+        # Primary: BugPk API
+        meta = await _fetch_via_bugpk(url_or_id)
+        if meta:
+            return meta
 
-        patterns = [
-            re.compile(r"https://www\.douyin\.com/(?:video|note|slides)/([0-9]{19})"),
-            re.compile(r"https://www\.iesdouyin\.com/share/(?:video|note|slides)/([0-9]{19})"),
-            re.compile(r"https://www\.douyin\.com/user/[A-Za-z0-9_-]+.*modal_id=(\d{19})"),
-            re.compile(r"\b(\d{19})\b"),
-        ]
-        aweme_id = None
-        for pat in patterns:
-            m = pat.search(url_or_id)
-            if m:
-                aweme_id = m.group(1)
-                break
+        # Fallback: Xinyew API
+        meta = await _fetch_via_xinyew(url_or_id)
+        if meta:
+            return meta
 
-        if not aweme_id and url_or_id.startswith("http"):
-            try:
-                async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=False) as c:
-                    resp = await c.get(url_or_id, headers={
-                        "User-Agent": "Mozilla/5.0",
-                        "Cookie": cookie,
-                    })
-                    for pat in patterns:
-                        m = pat.search(str(resp.url))
-                        if m:
-                            aweme_id = m.group(1)
-                            break
-            except Exception:
-                pass
+        print("  All metadata APIs failed", file=sys.stderr)
+        return None
+    except Exception as e:
+        print("  Fetch error: " + str(e), file=sys.stderr)
+        return None
 
-        if not aweme_id:
-            print("  Cannot extract aweme_id", file=sys.stderr)
-            return None
 
-        params = {
-            "device_platform": "webapp", "aid": "6383", "channel": "channel_pc_web",
-            "aweme_id": aweme_id, "version_code": "190500", "version_name": "19.5.0",
-        }
-        encoded = urlencode(params, safe="=", quote_via=quote)
-        signature = ab.get_value(encoded, "GET")
-        signed_url = "https://www.douyin.com/aweme/v1/web/aweme/detail/?" + encoded + "&a_bogus=" + signature
+async def _fetch_via_bugpk(url_or_id):
+    """Fetch metadata from BugPk API (free, no auth)."""
+    import httpx
 
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True, verify=False) as client:
-            resp = await client.get(signed_url, headers={
-                "Accept": "*/*",
-                "Referer": "https://www.douyin.com/?recommend=1",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Cookie": cookie,
-            })
-
-            # Detect cookie expiry
-            if resp.status_code in (401, 403):
-                print("  Cookie expired (HTTP " + str(resp.status_code) + ")", file=sys.stderr)
-                return {"_cookie_expired": True}
-
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            resp = await client.get(
+                "https://api.bugpk.com/api/douyin",
+                params={"url": url_or_id},
+            )
             resp.raise_for_status()
             data = resp.json()
 
-        # Check API-level error codes indicating cookie issues
-        api_code = data.get("status_code", 0)
-        if api_code in (2151, 2154, 2193):
-            print("  Cookie expired (API code " + str(api_code) + ")", file=sys.stderr)
-            return {"_cookie_expired": True}
+        if data.get("code") != 200:
+            print(f"  BugPk error: {data.get('msg', '?')}", file=sys.stderr)
+            return None
 
-        detail = data.get("aweme_detail")
-        if not detail:
-            print("  No aweme_detail (possibly expired cookie)", file=sys.stderr)
-            return {"_cookie_expired": True}
+        d = data.get("data", {})
+        if d.get("type") == "images":
+            print("  Skipping image post (not video)", file=sys.stderr)
+            return None
 
-        author = detail.get("author", {})
-        stats = detail.get("statistics", {})
-        desc = detail.get("desc", "")
-        tags = re.findall(r"#([^#\s]+)#?", desc)
-        video = detail.get("video", {})
+        author = d.get("author", {})
+        extra = d.get("extra", {})
+        tags = extra.get("video_tags", []) or extra.get("hashtags", [])
+        tags = [t.get("tag_name", t) if isinstance(t, dict) else str(t) for t in tags]
+        stats = extra.get("statistics", {})
 
         return {
-            "aweme_id": aweme_id,
-            "title": desc[:80].strip(),
-            "author": author.get("nickname", ""),
+            "aweme_id": extra.get("aweme_id", ""),
+            "title": (d.get("title") or "")[:80].strip(),
+            "author": author.get("name", ""),
             "tags": tags if tags else [],
-            "core_points": desc.strip(),
-            "desc_full": desc,
-            "video_url": video.get("play_addr", {}).get("url_list", [""])[0],
-            "duration": video.get("duration", 0),
+            "core_points": (d.get("desc") or "").strip(),
+            "desc_full": d.get("desc", ""),
+            "video_url": d.get("url", ""),
+            "duration": d.get("duration", 0),
             "statistics": {
                 "digg_count": stats.get("digg_count", 0),
                 "comment_count": stats.get("comment_count", 0),
@@ -294,11 +254,49 @@ async def _fetch_metadata(url_or_id, cookie):
                 "share_count": stats.get("share_count", 0),
                 "play_count": stats.get("play_count", 0),
             },
-            "create_time": detail.get("create_time", 0),
+            "create_time": extra.get("create_time", 0),
             "url": url_or_id,
         }
     except Exception as e:
-        print("  Fetch error: " + str(e), file=sys.stderr)
+        print(f"  BugPk failed: {e}", file=sys.stderr)
+        return None
+
+
+async def _fetch_via_xinyew(url_or_id):
+    """Fetch metadata from Xinyew API (free, no auth, fallback)."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            resp = await client.get(
+                "https://api.xinyew.cn/api/douyinjx",
+                params={"url": url_or_id},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        if data.get("code") != 200:
+            return None
+
+        d = data.get("data", {})
+        additional = d.get("additional_data", [{}])
+        info = additional[0] if additional else {}
+
+        return {
+            "aweme_id": "",
+            "title": (info.get("desc") or "")[:80].strip(),
+            "author": info.get("nickname", ""),
+            "tags": [],
+            "core_points": (info.get("desc") or "").strip(),
+            "desc_full": info.get("desc", ""),
+            "video_url": d.get("video_url", ""),
+            "duration": 0,
+            "statistics": {},
+            "create_time": 0,
+            "url": url_or_id,
+        }
+    except Exception as e:
+        print(f"  Xinyew failed: {e}", file=sys.stderr)
         return None
 
 
