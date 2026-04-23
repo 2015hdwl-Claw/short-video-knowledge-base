@@ -34,6 +34,10 @@ BASE_URL = os.getenv("CLASSIFIER_BASE_URL", "https://open.bigmodel.cn/api/paas/v
 MODEL = os.getenv("CLASSIFIER_MODEL", "glm-4.7-flash")
 CLIENT = _get_client("glm_cn")
 
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "whisper-large-v3-turbo")
+
 ADMIN_URL = "https://2015hdwl-claw.github.io/short-video-knowledge-base/admin.html"
 RATE_LIMIT = 1.5
 WIKI_CONCEPTS = REPO / "wiki" / "concepts"
@@ -328,56 +332,129 @@ def _fetch_subtitles(url):
     return ""
 
 
-def _transcribe_whisper(video_url, duration_ms=0):
-    """Download video via API URL and transcribe with faster-whisper.
+def _download_audio(video_url, max_size_mb=25):
+    """Download video audio from Douyin API URL.
 
-    Uses the video_url from Douyin API (aBogus signed), not yt-dlp.
-    Requires local machine with 2GB+ RAM.
+    Uses the video_url from Douyin API (aBogus signed).
+    Returns temp file path or None on failure.
     """
+    import tempfile
+    import httpx
+
+    if not video_url:
+        return None
+
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+        audio_path = Path(tmp.name)
+
     try:
-        import tempfile
-        import subprocess
-        from faster_whisper import WhisperModel
+        with httpx.Client(timeout=120, follow_redirects=True, verify=False) as client:
+            resp = client.get(video_url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": "https://www.douyin.com/",
+            })
+            resp.raise_for_status()
+            audio_path.write_bytes(resp.content)
 
-        if not video_url:
-            return ""
+        size_mb = audio_path.stat().st_size / 1024 / 1024
+        if size_mb < 0.001:
+            print("  Audio download failed or empty", file=sys.stderr)
+            audio_path.unlink(missing_ok=True)
+            return None
+        if size_mb > max_size_mb:
+            print(f"  Audio too large ({size_mb:.1f}MB > {max_size_mb}MB), skipping Groq", file=sys.stderr)
+            audio_path.unlink(missing_ok=True)
+            return None
 
-        # Skip videos longer than 10 minutes (Whisper too slow)
-        if duration_ms and duration_ms > 600000:
-            print(f"  Video too long ({duration_ms/1000:.0f}s), skipping Whisper", file=sys.stderr)
-            return ""
+        print(f"  Audio downloaded: {size_mb:.1f}MB")
+        return audio_path
+    except Exception as e:
+        print("  Audio download failed: " + str(e), file=sys.stderr)
+        audio_path.unlink(missing_ok=True)
+        return None
 
-        print("  Downloading audio for Whisper...")
-        with tempfile.TemporaryDirectory() as tmpdir:
-            audio_path = Path(tmpdir) / "audio.mp4"
-            import httpx
-            with httpx.Client(timeout=120, follow_redirects=True, verify=False) as client:
-                resp = client.get(video_url, headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Referer": "https://www.douyin.com/",
-                })
-                resp.raise_for_status()
-                audio_path.write_bytes(resp.content)
 
-            if audio_path.stat().st_size < 1000:
-                print("  Download failed or empty", file=sys.stderr)
-                return ""
+def _transcribe_groq(audio_path, duration_ms=0):
+    """Transcribe audio file using Groq Whisper API.
 
-            print(f"  Audio downloaded: {audio_path.stat().st_size/1024/1024:.1f}MB")
-            print("  Running Whisper (tiny, Chinese)...")
-            model = WhisperModel("tiny", device="cpu", compute_type="int8")
-            segments, info = model.transcribe(
-                str(audio_path), language="zh", beam_size=3,
-                condition_on_previous_text=False,
+    Uses whisper-large-v3-turbo for fast, accurate Chinese transcription.
+    Falls back to local faster-whisper if Groq is unavailable.
+    """
+    if not audio_path or not GROQ_API_KEY:
+        return ""
+
+    if duration_ms and duration_ms > 600000:
+        print(f"  Video too long ({duration_ms/1000:.0f}s), skipping transcription", file=sys.stderr)
+        return ""
+
+    try:
+        import httpx
+
+        with open(audio_path, "rb") as f:
+            files = {"file": ("audio.mp4", f, "audio/mp4")}
+            data = {
+                "model": GROQ_MODEL,
+                "language": "zh",
+                "temperature": "0.0",
+                "response_format": "json",
+            }
+            resp = httpx.post(
+                f"{GROQ_BASE_URL}/audio/transcriptions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                files=files, data=data, timeout=60,
             )
-            text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
-            print(f"  Whisper done: {len(text)} chars")
+
+        if resp.status_code == 429:
+            print("  Groq rate limited, retrying after pause...", file=sys.stderr)
+            import time
+            time.sleep(5)
+            with open(audio_path, "rb") as f:
+                files = {"file": ("audio.mp4", f, "audio/mp4")}
+                resp = httpx.post(
+                    f"{GROQ_BASE_URL}/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    files=files, data=data, timeout=60,
+                )
+
+        resp.raise_for_status()
+        result = resp.json()
+        text = result.get("text", "").strip()
+
+        if text:
+            print(f"  Groq Whisper done: {len(text)} chars")
             return text
-    except ImportError:
-        print("  faster-whisper not installed, skipping", file=sys.stderr)
+        print("  Groq returned empty text", file=sys.stderr)
         return ""
     except Exception as e:
-        print("  Whisper failed: " + str(e), file=sys.stderr)
+        print(f"  Groq failed: {e}", file=sys.stderr)
+        return ""
+
+
+def _transcribe_whisper_local(audio_path, duration_ms=0):
+    """Fallback: transcribe audio with local faster-whisper (tiny model, CPU)."""
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        print("  faster-whisper not installed, skipping local fallback", file=sys.stderr)
+        return ""
+
+    if not audio_path:
+        return ""
+    if duration_ms and duration_ms > 600000:
+        return ""
+
+    try:
+        print("  Running local Whisper (tiny, Chinese)...")
+        model = WhisperModel("tiny", device="cpu", compute_type="int8")
+        segments, _ = model.transcribe(
+            str(audio_path), language="zh", beam_size=3,
+            condition_on_previous_text=False,
+        )
+        text = " ".join(seg.text.strip() for seg in segments if seg.text.strip())
+        print(f"  Local Whisper done: {len(text)} chars")
+        return text
+    except Exception as e:
+        print(f"  Local Whisper failed: {e}", file=sys.stderr)
         return ""
 
 
@@ -537,13 +614,30 @@ def _fill_content(meta):
                     source = "keyframe_vlm"
                     print("  GLM-4V success: " + content[:50] + "...")
 
-        # Priority 3: Whisper transcription (local only, slow)
+        # Priority 3: Groq Whisper API (fast, accurate)
         if not content and video_url:
-            print("  [3] Trying Whisper transcription...")
-            content = _transcribe_whisper(video_url, duration)
+            print("  [3] Downloading audio for transcription...")
+            audio_path = _download_audio(video_url)
+            if audio_path:
+                content = _transcribe_groq(audio_path, duration)
+                if content:
+                    source = "groq_whisper"
+                    print("  Groq success: " + content[:50] + "...")
+
+        # Priority 4: Local Whisper fallback (slow, tiny model)
+        if not content and audio_path:
+            print("  [4] Trying local Whisper fallback...")
+            content = _transcribe_whisper_local(audio_path, duration)
             if content:
-                source = "whisper"
-                print("  Whisper success: " + content[:50] + "...")
+                source = "whisper_local"
+                print("  Local Whisper success: " + content[:50] + "...")
+
+        # Cleanup temp audio
+        if audio_path:
+            try:
+                audio_path.unlink(missing_ok=True)
+            except Exception:
+                pass
 
     if content:
         meta["_subtitle"] = True
