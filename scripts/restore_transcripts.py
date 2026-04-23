@@ -17,7 +17,7 @@ JSON_SUB = os.path.join(BASE_DIR, "short-videos", "short-videos.json")
 JSON_ROOT = os.path.join(BASE_DIR, "short-videos.json")
 
 API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-API_KEY = os.getenv("CLASSIFIER_API_KEY", "7571f91152a74a669179d3a2c67c513a.E6KUmy0NNEwTYdKK")
+API_KEY = os.getenv("CLASSIFIER_API_KEY", "")
 MODEL = "glm-4.7-flash"
 
 PLACEHOLDER_PATTERNS = ["來源：小紅書平台", "來源：抖音", "自動下載失敗", "自動轉錄失敗"]

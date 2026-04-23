@@ -703,8 +703,8 @@ def _trigger_wiki_rebuild():
         videos = load_videos()
         concept_counts = {}
         for cn_name, cfg in CONCEPT_MAP.items():
-            filename, description, tags, categories = cfg
-            content, count = build_concept_page(cn_name, filename, description, tags, categories, videos)
+            filename = cfg["filename"]
+            content, count = build_concept_page(cn_name, cfg, videos)
             concept_counts[cn_name] = count
             out_path = Path(WIKI_CONCEPTS) / (filename + ".md")
             out_path.parent.mkdir(parents=True, exist_ok=True)

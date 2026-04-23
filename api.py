@@ -46,13 +46,17 @@ async def api_auth(request: Request, call_next):
         if request.url.path == "/api/webhook/weekly-digest":
             # Webhook uses X-Webhook-Secret header
             secret = os.getenv("WEBHOOK_SECRET", "")
+            if not secret:
+                return JSONResponse(status_code=401, content={"detail": "WEBHOOK_SECRET not configured"})
             if secret:
                 hdr = request.headers.get("X-Webhook-Secret", "")
                 if hdr != secret:
                     return JSONResponse(status_code=401, content={"detail": "Invalid webhook secret"})
         else:
             key = request.headers.get("X-API-Key", "")
-            if API_KEY and key != API_KEY:
+            if not API_KEY:
+                return JSONResponse(status_code=401, content={"detail": "API_KEY not configured"})
+            if key != API_KEY:
                 return JSONResponse(status_code=401, content={"detail": "Invalid API key"})
     return await call_next(request)
 

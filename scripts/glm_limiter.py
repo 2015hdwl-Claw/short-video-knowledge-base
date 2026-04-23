@@ -33,7 +33,7 @@ PROVIDERS = {
         "base_url": "https://open.bigmodel.cn/api/paas/v4/",
         "model": "glm-4.7-flash",
         "env_key": "CLASSIFIER_API_KEY",
-        "fallback_key": "7571f91152a74a669179d3a2c67c513a.E6KUmy0NNEwTYdKK",
+        "fallback_key": "",
     },
 }
 
