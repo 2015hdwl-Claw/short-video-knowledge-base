@@ -239,7 +239,7 @@ async def _fetch_via_bugpk(url_or_id):
         stats = extra.get("statistics", {})
 
         return {
-            "aweme_id": extra.get("aweme_id", ""),
+            "aweme_id": str(extra.get("aweme_id", "")),
             "title": (d.get("title") or "")[:80].strip(),
             "author": author.get("name", ""),
             "tags": tags if tags else [],
