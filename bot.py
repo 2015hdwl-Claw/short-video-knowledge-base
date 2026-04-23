@@ -11,7 +11,6 @@ import asyncio
 import os
 import re
 import sys
-import threading
 from pathlib import Path
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
@@ -140,26 +139,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"處理失敗：{e}")
 
 
-def run_bot():
+def build_bot_application():
     if not BOT_TOKEN:
-        print("[bot] TELEGRAM_BOT_TOKEN not set, skipping bot startup")
+        return None
+    print("[bot] Building Telegram bot application...")
+    application = Application.builder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(CommandHandler("help", cmd_help))
+    application.add_handler(CommandHandler("stats", cmd_stats))
+    application.add_handler(CommandHandler("search", cmd_search))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    return application
+
+
+async def start_bot(application):
+    if not application:
         return
-
-    print("[bot] Starting Telegram bot...")
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("help", cmd_help))
-    app.add_handler(CommandHandler("stats", cmd_stats))
-    app.add_handler(CommandHandler("search", cmd_search))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    app.run_polling(drop_pending_updates=True)
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling(drop_pending_updates=True)
+    print("[bot] Telegram bot polling started")
 
 
-def start_bot_thread():
-    if not BOT_TOKEN:
+async def stop_bot(application):
+    if not application:
         return
-    thread = threading.Thread(target=run_bot, daemon=True, name="telegram-bot")
-    thread.start()
-    print("[bot] Telegram bot started in background thread")
+    await application.updater.stop()
+    await application.stop()
+    await application.shutdown()

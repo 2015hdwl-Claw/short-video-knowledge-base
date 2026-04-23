@@ -41,9 +41,13 @@ WIKI_DIR = REPO / "wiki"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from bot import start_bot_thread
-    start_bot_thread()
+    from bot import build_bot_application, start_bot, stop_bot
+    bot_app = build_bot_application()
+    if bot_app:
+        await start_bot(bot_app)
     yield
+    if bot_app:
+        await stop_bot(bot_app)
 
 app = FastAPI(title="Short Video Knowledge Base API", version="2.0.0", lifespan=lifespan)
 
