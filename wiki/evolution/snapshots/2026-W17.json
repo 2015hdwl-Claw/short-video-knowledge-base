@@ -1,0 +1,111 @@
+{
+  "date": "2026-04-23",
+  "week": "2026-W17",
+  "stats": {
+    "total_videos": 154,
+    "category_distribution": {
+      "AI": 62,
+      "個人成長": 26,
+      "財經": 20,
+      "教育": 18,
+      "科技": 15,
+      "健康": 9,
+      "心理學": 3,
+      "創業": 1
+    },
+    "concept_pages": 8,
+    "insights": 3,
+    "top_tags": [
+      {
+        "tag": "AI",
+        "count": 60
+      },
+      {
+        "tag": "科技",
+        "count": 31
+      },
+      {
+        "tag": "個人成長",
+        "count": 27
+      },
+      {
+        "tag": "教育",
+        "count": 19
+      },
+      {
+        "tag": "創業",
+        "count": 16
+      },
+      {
+        "tag": "財經",
+        "count": 10
+      },
+      {
+        "tag": "个人成长",
+        "count": 8
+      },
+      {
+        "tag": "健康",
+        "count": 8
+      },
+      {
+        "tag": "OpenClaw",
+        "count": 7
+      },
+      {
+        "tag": "科學",
+        "count": 6
+      },
+      {
+        "tag": "AI編程",
+        "count": 6
+      },
+      {
+        "tag": "AI趨勢",
+        "count": 5
+      },
+      {
+        "tag": "商业思维",
+        "count": 4
+      },
+      {
+        "tag": "心理學",
+        "count": 3
+      },
+      {
+        "tag": "认知",
+        "count": 3
+      },
+      {
+        "tag": "AI新星计划",
+        "count": 3
+      },
+      {
+        "tag": "商業模式",
+        "count": 2
+      },
+      {
+        "tag": "一人公司",
+        "count": 2
+      },
+      {
+        "tag": "財富思維",
+        "count": 2
+      },
+      {
+        "tag": "商业",
+        "count": 2
+      }
+    ]
+  },
+  "content_hashes": {
+    "ai-coding-tools.md": "sha256:a2ad11873c6e298f",
+    "ai-trends.md": "sha256:55a3d3a9bb2c29a9",
+    "entrepreneurship.md": "sha256:247b092639ec3746",
+    "finance-investing.md": "sha256:dc3fd86ddfbd3d35",
+    "health.md": "sha256:fc9948bd3d13d747",
+    "learning.md": "sha256:2e6a90457ff2daae",
+    "psychology.md": "sha256:dbb3a221ef5e5fcc",
+    "science-history.md": "sha256:cb39d788e152a477"
+  }
+}
