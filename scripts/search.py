@@ -243,8 +243,100 @@ def search_videos(query, limit=10, recent_days=None):
 
 
 def search_wiki(query, limit=10):
-    """Search wiki concepts and insights."""
+    """Search wiki concepts and insights pages with BM25."""
     docs = []
+    file_map = {}
+
     for f in glob.glob(os.path.join(CONCEPTS_DIR, '*.md')):
         name = os.path.splitext(os.path.basename(f))[0]
-        with open(f, 'r', encoding='utf-8'
+        with open(f, 'r', encoding='utf-8') as fh:
+            text = fh.read()
+        docs.append((name, text))
+        file_map[name] = ('concept', f)
+
+    for f in glob.glob(os.path.join(INSIGHTS_DIR, '*.md')):
+        name = os.path.splitext(os.path.basename(f))[0]
+        with open(f, 'r', encoding='utf-8') as fh:
+            text = fh.read()
+        docs.append((name, text))
+        file_map[name] = ('insight', f)
+
+    # Also search other wiki subdirectories
+    for subdir in ['comparisons', 'entities', 'syntheses', 'indexes']:
+        dir_path = os.path.join(REPO, 'wiki', subdir)
+        if not os.path.isdir(dir_path):
+            continue
+        for f in glob.glob(os.path.join(dir_path, '*.md')):
+            name = os.path.splitext(os.path.basename(f))[0]
+            with open(f, 'r', encoding='utf-8') as fh:
+                text = fh.read()
+            docs.append((name, text))
+            file_map[name] = (subdir, f)
+
+    if not docs:
+        return []
+
+    index = build_bm25_index(docs)
+    results = bm25_search(index, query, limit)
+
+    output = []
+    for doc_id, score in results:
+        page_type, path = file_map[doc_id]
+        output.append({
+            'type': 'wiki',
+            'subtype': page_type,
+            'title': doc_id,
+            'score': round(score, 2),
+            'path': path,
+        })
+    return output
+
+
+def search_all(query, limit=10):
+    """Search both videos and wiki, merge and rank by score."""
+    video_results = search_videos(query, limit=limit)
+    wiki_results = search_wiki(query, limit=limit)
+
+    merged = []
+    for r in video_results:
+        merged.append({**r, 'rank_score': r['score']})
+    for r in wiki_results:
+        merged.append({**r, 'rank_score': r['score']})
+
+    merged.sort(key=lambda x: -x['rank_score'])
+    return merged[:limit]
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='BM25 Search')
+    parser.add_argument('query', help='Search query')
+    parser.add_argument('--limit', type=int, default=10, help='Max results')
+    parser.add_argument('--type', choices=['videos', 'wiki', 'all'], default='all',
+                        help='Search type')
+    parser.add_argument('--recent', type=int, default=None,
+                        help='Only videos from last N days')
+    parser.add_argument('--json', action='store_true', help='JSON output')
+    args = parser.parse_args()
+
+    if args.type == 'videos':
+        results = search_videos(args.query, limit=args.limit,
+                                recent_days=args.recent)
+    elif args.type == 'wiki':
+        results = search_wiki(args.query, limit=args.limit)
+    else:
+        results = search_all(args.query, limit=args.limit)
+
+    if args.json:
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+    else:
+        for r in results:
+            score = r['score']
+            title = r['title']
+            rtype = r.get('type', '?')
+            extra = ''
+            if rtype == 'video':
+                extra = f" [{r.get('category', '')}] {r.get('date', '')}"
+            elif rtype == 'wiki':
+                extra = f" ({r.get('subtype', '')})"
+            print(f"  {score:6.2f}  {title}{extra}")

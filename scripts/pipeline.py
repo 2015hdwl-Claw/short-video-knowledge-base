@@ -26,13 +26,18 @@ from openai import OpenAI
 REPO = Path(__file__).resolve().parent.parent
 JSON_PATHS = [REPO / "short-videos.json", REPO / "short-videos" / "short-videos.json"]
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from glm_limiter import rate_limited_call, PROVIDERS, _get_client
+
 API_KEY = os.getenv("CLASSIFIER_API_KEY", "")
 BASE_URL = os.getenv("CLASSIFIER_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/")
 MODEL = os.getenv("CLASSIFIER_MODEL", "glm-4.7-flash")
-CLIENT = OpenAI(api_key=API_KEY, base_url=BASE_URL) if API_KEY else None
+CLIENT = _get_client("glm_cn")
 
 ADMIN_URL = "https://2015hdwl-claw.github.io/short-video-knowledge-base/admin.html"
 RATE_LIMIT = 1.5
+WIKI_CONCEPTS = REPO / "wiki" / "concepts"
+WIKI_INDEX = REPO / "wiki" / "index.md"
 
 
 @dataclass
@@ -137,8 +142,7 @@ def _generate_summary(title, tags, source, url, subtitle=""):
             "Output only the summary:"
         )
     try:
-        resp = CLIENT.chat.completions.create(
-            model=MODEL,
+        resp = rate_limited_call(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=800 if subtitle else 500,
             temperature=0.7,
@@ -150,31 +154,31 @@ def _generate_summary(title, tags, source, url, subtitle=""):
 
 
 def _classify_category(tags, title, core_points):
-    if not CLIENT:
-        return "Other"
+    VALID_CATS = {"AI", "教育", "個人成長", "財經", "健康", "心理學", "科技", "創業"}
     tag_str = ", ".join(tags) if tags else ""
     prompt = (
-        "Classify this short video into ONE of these categories:\n"
-        "AI, Education, Personal Growth, Finance, Health, Psychology, Other\n\n"
-        "Title: " + title[:80] + "\n"
-        "Tags: " + tag_str + "\n"
-        "Summary: " + core_points[:100] + "\n\n"
-        "Reply with ONLY the category name, nothing else:"
+        "將這支短影音分類到以下其中一個類別（只能選一個）：\n"
+        "AI、教育、個人成長、財經、健康、心理學、科技、創業\n\n"
+        "標題: " + title[:80] + "\n"
+        "標籤: " + tag_str + "\n"
+        "摘要: " + core_points[:100] + "\n\n"
+        "只回覆類別名稱，不要加其他文字："
     )
     try:
-        resp = CLIENT.chat.completions.create(
-            model=MODEL,
+        resp = rate_limited_call(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=10,
             temperature=0,
         )
         cat = resp.choices[0].message.content.strip()
-        for v in ["AI", "Education", "Personal Growth", "Finance", "Health", "Psychology"]:
-            if v.lower() in cat.lower():
+        if cat in VALID_CATS:
+            return cat
+        for v in VALID_CATS:
+            if v in cat or cat in v:
                 return v
-        return cat if cat else "Other"
+        return "個人成長"
     except Exception:
-        return "Other"
+        return "個人成長"
 
 
 async def _fetch_metadata(url_or_id, cookie):
@@ -491,12 +495,7 @@ def _analyze_keyframes(frame_paths, title=""):
             })
 
         print(f"  Sending {len(frame_paths)} frames to GLM-4V...")
-        vlm_client = OpenAI(
-            api_key=API_KEY,
-            base_url=BASE_URL,
-        )
-        resp = vlm_client.chat.completions.create(
-            model="glm-4v-flash",
+        resp = rate_limited_call(
             messages=[{"role": "user", "content": content_parts}],
             max_tokens=1000,
             temperature=0.3,
@@ -600,7 +599,27 @@ def _save_video(meta, summary):
 
     data["videos"] = videos
     _save_json(data)
+    _trigger_wiki_rebuild()
     return True
+
+
+def _trigger_wiki_rebuild():
+    try:
+        from rebuild_concepts import build_concept_page, build_index, load_videos, CONCEPT_MAP
+        videos = load_videos()
+        concept_counts = {}
+        for cn_name, cfg in CONCEPT_MAP.items():
+            filename, description, tags, categories = cfg
+            content, count = build_concept_page(cn_name, filename, description, tags, categories, videos)
+            concept_counts[cn_name] = count
+            out_path = Path(WIKI_CONCEPTS) / (filename + ".md")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(content, encoding="utf-8")
+        index_content = build_index(concept_counts)
+        Path(WIKI_INDEX).write_text(index_content, encoding="utf-8")
+        print("Wiki rebuilt automatically")
+    except Exception as e:
+        print("Wiki rebuild skipped: " + str(e), file=sys.stderr)
 
 
 async def process_url(url, cookie="", dry_run=False):
