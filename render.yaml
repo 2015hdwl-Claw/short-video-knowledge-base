@@ -15,8 +15,6 @@ services:
         value: glm-4.7-flash
       - key: DOUYIN_COOKIE
         sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: NVIDIA_API_KEY

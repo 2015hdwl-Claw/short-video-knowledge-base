@@ -21,7 +21,6 @@ import sys
 import tarfile
 from pathlib import Path
 
-from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -39,17 +38,7 @@ TIMEOUT_DEFAULT = 60
 TIMEOUT_WIKI_REBUILD = 120
 WIKI_DIR = REPO / "wiki"
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    from bot import build_bot_application, start_bot, stop_bot
-    bot_app = build_bot_application()
-    if bot_app:
-        await start_bot(bot_app)
-    yield
-    if bot_app:
-        await stop_bot(bot_app)
-
-app = FastAPI(title="Short Video Knowledge Base API", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="Short Video Knowledge Base API", version="2.0.0")
 
 
 

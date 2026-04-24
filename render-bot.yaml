@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: short-video-kb-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot_standalone.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: API_URL
+        value: https://short-video-knowledge-base.onrender.com
+      - key: API_KEY
+        sync: false
+    healthCheckPath: /health
+    branch: main
