@@ -686,7 +686,7 @@ def _git_sync(message):
 
     github_token = os.getenv("GITHUB_TOKEN", "")
     if not github_token:
-        print("  Git sync skipped: no GITHUB_TOKEN", file=sys.stderr)
+        print("  [git] sync skipped: no GITHUB_TOKEN")
         return
 
     repo_slug = os.getenv("GITHUB_REPO", "2015hdwl-Claw/short-video-knowledge-base")
@@ -704,7 +704,7 @@ def _git_sync(message):
                 local_content = p.read_bytes()
                 break
         else:
-            print("  Git sync skipped: no local JSON", file=sys.stderr)
+            print("  [git] sync skipped: no local JSON")
             return
 
         b64 = base64.b64encode(local_content).decode("ascii")
@@ -715,11 +715,11 @@ def _git_sync(message):
         })
 
         if resp.status_code in (200, 201):
-            print("  Git sync done (API)")
+            print("  [git] sync done")
         else:
-            print(f"  Git sync failed: {resp.status_code} {resp.text[:100]}", file=sys.stderr)
+            print(f"  [git] sync FAILED: {resp.status_code} {resp.text[:100]}")
     except Exception as e:
-        print(f"  Git sync skipped: {e}", file=sys.stderr)
+        print(f"  [git] sync ERROR: {e}")
 
 
 def _trigger_wiki_rebuild():
