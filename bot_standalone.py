@@ -67,7 +67,7 @@ async def cmd_search(update, context):
             resp.raise_for_status()
             data = resp.json()
         results = data.get("results", {})
-        merged = results.get(chr(109)+chr(101)+chr(114)+chr(103)+chr(101)+chr(100), []) if isinstance(results, dict) else results
+        merged = results.get("merged", []) if isinstance(results, dict) else results
         if not merged:
             await update.message.reply_text(MSG["not_found"].format(query=query))
             return
@@ -118,9 +118,9 @@ async def handle_message(update, context):
                 f"Tags: {tag_str}",
                 f"Date: {date}",
                 "",
-                f"Core Points:" + chr(10) + "{points}",
+                f"Core Points:" + chr(10) + f"{points}",
                 "",
-                f"Likes: {{likes}} | Comments: {{comments}}",
+                f"Likes: {likes} | Comments: {comments}",
             ])
             max_len = 4096
             if len(reply) > max_len:
