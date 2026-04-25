@@ -1,0 +1,13 @@
+{
+  "start": "Short Video Knowledge Base Bot\n\nPaste a Douyin link, I will analyze and create a knowledge card.\n\nCommands:\n/stats - Knowledge base stats\n/search <keyword> - Search\n/help - Help",
+  "help": "Usage:\n\n1. Paste a Douyin video link\n   Supported: douyin.com/... or v.douyin.com/...\n\n2. Bot processes automatically (~10-30 sec)\n\nCommands:\n/stats - View stats\n/search <keyword> - Search",
+  "search_hint": "Please provide a keyword\nUsage: /search AI tutorial",
+  "processing": "Processing, please wait...",
+  "timeout": "Processing timeout (90s), API server may be waking up. Try again later.",
+  "stats": "Knowledge base has {total} entries",
+  "stats_fail": "Query failed: {e}",
+  "search_fail": "Search failed: {e}",
+  "not_found": "No results for: {query}",
+  "search_results": "Search \"{query}\" ({count} results):",
+  "process_fail": "Processing failed: {e}"
+}
