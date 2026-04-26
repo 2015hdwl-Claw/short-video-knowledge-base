@@ -161,6 +161,7 @@ def run_with_health_server():
     PORT = int(os.getenv("PORT", "10000"))
     health_app = FastAPI()
     @health_app.get("/health")
+    @health_app.head("/health")
     async def health():
         return {"status": "healthy", "service": "telegram-bot"}
     def _serve():

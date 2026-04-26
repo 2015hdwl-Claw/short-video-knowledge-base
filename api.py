@@ -95,6 +95,7 @@ async def root():
 
 
 @app.get("/health")
+@app.head("/health")
 async def health():
     return {"status": "healthy", "service": "short-video-knowledge-base", "version": "2.0.0"}
 
