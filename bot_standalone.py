@@ -98,10 +98,10 @@ async def handle_message(update, context):
                     json={"url": url},
                     headers=headers,
                 )
-                if resp.status_code != 502:
+                if resp.status_code not in (502, 503):
                     break
                 import asyncio as _a
-                print(f"  [bot] API 502, retry {attempt+1}/3...")
+                print(f"  [bot] API 502/503, retry {attempt+1}/3...")
                 await _a.sleep(10)
         resp.raise_for_status()
         data = resp.json()
