@@ -168,7 +168,10 @@ def run_with_health_server():
     server_thread = threading.Thread(target=_serve, daemon=True)
     server_thread.start()
     print(f"[bot] Health server on port {PORT}")
-    run_bot()
+    try:
+        run_bot()
+    except Exception as e:
+        print(f"[bot] Bot crashed: {e}, health server still running")
 
 
 if __name__ == "__main__":
