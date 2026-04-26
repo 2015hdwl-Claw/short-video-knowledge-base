@@ -92,11 +92,17 @@ async def handle_message(update, context):
         if API_KEY:
             headers["X-API-Key"] = API_KEY
         async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                f"{API_URL}/api/process",
-                json={"url": url},
-                headers=headers,
-            )
+            for attempt in range(3):
+                resp = await client.post(
+                    f"{API_URL}/api/process",
+                    json={"url": url},
+                    headers=headers,
+                )
+                if resp.status_code != 502:
+                    break
+                import asyncio as _a
+                print(f"  [bot] API 502, retry {attempt+1}/3...")
+                await _a.sleep(10)
         resp.raise_for_status()
         data = resp.json()
         if data.get("success"):
