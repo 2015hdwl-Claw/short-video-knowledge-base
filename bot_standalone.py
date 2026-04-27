@@ -39,6 +39,7 @@ with open(os.path.join(_dir, "bot_messages.json"), "r", encoding="utf-8") as _f:
     MSG = json.load(_f)
 
 _conversation_state: dict = {}
+DISCUSSION_WINDOW = 300  # seconds: treat input as discussion within this window after AI analysis
 
 NL = "\n"
 
@@ -352,29 +353,59 @@ async def handle_message(update, context):
         await handle_video(update, context, urls[0])
         return
 
-    # 2. Reply to bot message -> continue AI discussion
-    if update.message.reply_to_message:
-        reply_msg = update.message.reply_to_message
-        if reply_msg.from_user and reply_msg.from_user.is_bot:
-            chat_id = update.message.chat_id
-            if chat_id not in _conversation_state:
-                notes = assistant.list_notes(limit=1)
-                if notes and notes[0].get("source") == "telegram":
+    chat_id = update.message.chat_id
+
+    # 2. Reply to bot message -> always treat as discussion
+    is_reply_to_bot = (
+        update.message.reply_to_message
+        and update.message.reply_to_message.from_user
+        and update.message.reply_to_message.from_user.is_bot
+    )
+
+    # 3. Check discussion window (time-based or reply-based)
+    in_discussion = False
+    if is_reply_to_bot or chat_id in _conversation_state:
+        in_discussion = True
+    else:
+        # No in-memory state — check notes.json for recent note with AI analysis
+        notes = assistant.list_notes(limit=1)
+        if notes and notes[0].get("source") == "telegram" and notes[0].get("ai_analysis"):
+            import time as _time
+            from datetime import datetime, timezone, timedelta
+            tz = timezone(timedelta(hours=8))
+            note_time_str = notes[0].get("date", "") + "T" + notes[0].get("time", "00:00")
+            try:
+                note_time = datetime.strptime(note_time_str, "%Y-%m-%dT%H:%M").replace(tzinfo=tz)
+                elapsed = _time.time() - note_time.timestamp()
+                if elapsed < DISCUSSION_WINDOW:
+                    in_discussion = True
                     _conversation_state[chat_id] = {
                         "note_id": notes[0].get("id", 0),
                         "note_content": notes[0].get("content", ""),
-                        "history": [],
+                        "history": [{"role": "assistant", "text": notes[0]["ai_analysis"]}],
                     }
-                    ai = notes[0].get("ai_analysis", "")
-                    if ai:
-                        _conversation_state[chat_id]["history"].append(
-                            {"role": "assistant", "text": ai}
-                        )
-            if chat_id in _conversation_state:
-                await handle_discussion(update, context)
-                return
+            except (ValueError, OSError):
+                pass
 
-    # 3. Pending delete confirmation
+    if in_discussion:
+        if chat_id not in _conversation_state:
+            notes = assistant.list_notes(limit=1)
+            if notes and notes[0].get("source") == "telegram":
+                _conversation_state[chat_id] = {
+                    "note_id": notes[0].get("id", 0),
+                    "note_content": notes[0].get("content", ""),
+                    "history": [],
+                }
+                ai = notes[0].get("ai_analysis", "")
+                if ai:
+                    _conversation_state[chat_id]["history"].append(
+                        {"role": "assistant", "text": ai}
+                    )
+        if chat_id in _conversation_state:
+            await handle_discussion(update, context)
+            return
+
+    # 4. Pending delete confirmation
     pending = context.user_data.get("pending_delete")
     if pending and text.strip().lower() in ("y", "yes", "是", "刪", "確認"):
         if assistant.delete_note(pending):
@@ -383,7 +414,7 @@ async def handle_message(update, context):
         return
     context.user_data["pending_delete"] = None
 
-    # 4. Not URL, not command -> treat as note
+    # 5. Not URL, not command, not discussion -> treat as note
     await handle_note(update, context)
 
 

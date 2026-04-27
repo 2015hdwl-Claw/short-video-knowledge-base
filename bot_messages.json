@@ -17,7 +17,7 @@
   "note_list_item": "#{id} [{category}] {tags} - {content}",
   "note_search_header": "Search \"{query}\" ({count} results):",
   "note_ai_header": "AI Analysis:",
-  "note_discuss_hint": "Reply to continue discussing",
+  "note_discuss_hint": "直接輸入問題即可繼續討論（5 分鐘內有效）",
   "note_delete_hint": "Usage: /delete <id>",
   "note_delete_confirm": "Delete note #{id}?",
   "note_help": "Notes:\n  Just type any text (not a URL or /command) to save a note.\n  AI will auto-categorize and analyze.\n\nCommands:\n  /notes - List recent notes\n  /notes <category> - Filter by category\n  /search <keyword> - Search notes\n  /delete <id> - Delete a note\n  /note_help - This help"
