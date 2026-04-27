@@ -178,10 +178,16 @@ def sync_from_github():
     return pulled
 
 
+_dirty = False
+
+
 def sync_all():
-    """Push all local notes.json + raw/notes/*.md to GitHub in one batch.
+    """Push notes.json + new .md files to GitHub only if there are local changes.
     Call this on startup and periodically (not on every note write).
     """
+    global _dirty
+    if not _dirty:
+        return
     from pathlib import Path as _Path
     notes = _load_notes_json()
     if notes:
@@ -193,6 +199,8 @@ def sync_all():
             with open(fpath, "r", encoding="utf-8") as f:
                 content = f.read()
             _push_md_to_github(rel_path, content)
+    _dirty = False
+    print("  [assistant] Batch sync complete")
 
 
 # --- Public API ---
@@ -244,9 +252,9 @@ def add_note(content, chat_id, ai_analysis=None, category="", tags=None):
     }
     notes.append(entry)
     _save_notes_json(notes)
+    global _dirty
+    _dirty = True
     print(f"  [assistant] Note #{entry['id']} saved locally")
-
-    # Don't push immediately — batch sync to avoid deploy loop
 
     entry["id"] = len(notes)
     return entry
@@ -271,6 +279,7 @@ def delete_note(note_id):
         return False
     removed = notes.pop(note_id - 1)
     _save_notes_json(notes)
+    global _dirty; _dirty = True
     rel_path = removed.get("file", "")
     if rel_path:
         try:
@@ -309,6 +318,7 @@ def append_discussion(note_id, user_text, ai_reply):
     )
     note["ai_analysis"] = discussion
     _save_notes_json(notes)
+    global _dirty; _dirty = True
 
     rel_path = note.get("file", "")
     if rel_path:
