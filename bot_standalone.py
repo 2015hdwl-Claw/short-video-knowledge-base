@@ -19,6 +19,7 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 import httpx
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.error import Conflict
 
 import assistant
 
