@@ -166,7 +166,13 @@ def sync_from_github():
                 local_path = os.path.join(REPO_DIR, item["path"])
                 if os.path.exists(local_path):
                     continue
-                content = _gh_decode(item["content"])
+                if "content" not in item:
+                    file_resp = _gh_get(item["path"])
+                    if file_resp.status_code != 200:
+                        continue
+                    content = _gh_decode(file_resp.json()["content"])
+                else:
+                    content = _gh_decode(item["content"])
                 os.makedirs(os.path.dirname(local_path), exist_ok=True)
                 with open(local_path, "w", encoding="utf-8") as f:
                     f.write(content)

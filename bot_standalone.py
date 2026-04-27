@@ -21,6 +21,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 import assistant
+from telegram.error import Conflict
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 API_URL = os.getenv("API_URL", "https://short-video-knowledge-base.onrender.com")
@@ -429,6 +430,7 @@ def run_bot():
     assistant.sync_from_github()
 
     app = Application.builder().token(BOT_TOKEN).build()
+    app.add_error_handler(_error_handler)
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("stats", cmd_stats))
@@ -464,6 +466,19 @@ async def _post_shutdown(application):
     pass
 
 
+async def _error_handler(update, context):
+    """Handle telegram errors — stop on Conflict so the retry loop can restart."""
+    error = context.error
+    if isinstance(error, Conflict):
+        print("[bot] Conflict: another instance running, stopping to retry...")
+        try:
+            await context.application.stop()
+        except Exception:
+            pass
+        return
+    print(f"[bot] Unhandled error: {error}")
+
+
 def run_with_health_server():
     import threading
     import uvicorn
@@ -484,17 +499,18 @@ def run_with_health_server():
     server_thread.start()
     print(f"[bot] Health server on port {PORT}")
 
-    max_retries = 3
+    max_retries = 5
     for attempt in range(max_retries):
         try:
             run_bot()
             break
         except Exception as e:
             err_str = str(e)
-            if "Conflict" in err_str and attempt < max_retries - 1:
-                print(f"[bot] Conflict (instance overlap), retrying in 10s... ({attempt+1}/{max_retries})")
+            if ("Conflict" in err_str or "Conflict" in type(e).__name__) and attempt < max_retries - 1:
+                wait = 10 * (attempt + 1)
+                print(f"[bot] Conflict (instance overlap), retrying in {wait}s... ({attempt+1}/{max_retries})")
                 import time as _time
-                _time.sleep(10)
+                _time.sleep(wait)
                 continue
             print(f"[bot] Bot crashed: {e}, health server still running")
 
