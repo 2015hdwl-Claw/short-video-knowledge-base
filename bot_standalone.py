@@ -247,17 +247,28 @@ async def handle_video(update, context, url):
         headers = {}
         if API_KEY:
             headers["X-API-Key"] = API_KEY
-        for attempt in range(5):
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.post(
-                    API_URL + "/api/process",
-                    json={"url": url},
-                    headers=headers,
-                )
-            if resp.status_code not in (502, 503):
-                break
-            print(f"  [bot] API 502/503, retry {attempt+1}/5...")
-            await asyncio.sleep(15)
+        resp = None
+        for attempt in range(6):
+            try:
+                async with httpx.AsyncClient(timeout=120) as client:
+                    resp = await client.post(
+                        API_URL + "/api/process",
+                        json={"url": url},
+                        headers=headers,
+                    )
+                if resp.status_code not in (502, 503):
+                    break
+                print(f"  [bot] API {resp.status_code}, retry {attempt+1}/6...")
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadError) as e:
+                print(f"  [bot] API connection error: {type(e).__name__}, retry {attempt+1}/6...")
+                resp = None
+            if attempt < 5:
+                await asyncio.sleep(10 * (attempt + 1))
+        if resp is None:
+            await update.message.reply_text(
+                "API server unreachable after 6 retries. Please try again in 1-2 minutes."
+            )
+            return
         resp.raise_for_status()
         data = resp.json()
         if data.get("success"):
