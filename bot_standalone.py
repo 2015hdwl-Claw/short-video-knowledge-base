@@ -483,7 +483,7 @@ async def _periodic_sync():
 
 async def _post_init(application):
     global _sync_task
-    _sync_task = application.create_task(_periodic_sync())
+    _sync_task = asyncio.ensure_future(_periodic_sync())
 
 
 async def _post_shutdown(application):
