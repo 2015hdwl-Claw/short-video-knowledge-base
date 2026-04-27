@@ -440,7 +440,10 @@ def run_bot():
 
     app.post_init = _post_init
     app.post_shutdown = _post_shutdown
-    app.run_polling(drop_pending_updates=True)
+    try:
+        app.run_polling(drop_pending_updates=True)
+    except Exception as e:
+        print(f"[bot] Polling error: {e}")
 
 
 async def _periodic_sync():
@@ -481,10 +484,19 @@ def run_with_health_server():
     server_thread.start()
     print(f"[bot] Health server on port {PORT}")
 
-    try:
-        run_bot()
-    except Exception as e:
-        print(f"[bot] Bot crashed: {e}, health server still running")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            run_bot()
+            break
+        except Exception as e:
+            err_str = str(e)
+            if "Conflict" in err_str and attempt < max_retries - 1:
+                print(f"[bot] Conflict (instance overlap), retrying in 10s... ({attempt+1}/{max_retries})")
+                import time as _time
+                _time.sleep(10)
+                continue
+            print(f"[bot] Bot crashed: {e}, health server still running")
 
 
 if __name__ == "__main__":

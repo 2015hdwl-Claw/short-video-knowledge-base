@@ -182,11 +182,13 @@ def sync_all():
     """Push all local notes.json + raw/notes/*.md to GitHub in one batch.
     Call this on startup and periodically (not on every note write).
     """
+    from pathlib import Path as _Path
     notes = _load_notes_json()
     if notes:
         _sync_notes_json_to_github(notes)
-    if os.path.exists(RAW_NOTES_DIR):
-        for fpath in sorted(RAW_NOTES_DIR.glob("*.md")):
+    raw_dir = _Path(REPO_DIR) / "raw" / "notes"
+    if raw_dir.exists():
+        for fpath in sorted(raw_dir.glob("*.md")):
             rel_path = "raw/notes/" + fpath.name
             with open(fpath, "r", encoding="utf-8") as f:
                 content = f.read()
