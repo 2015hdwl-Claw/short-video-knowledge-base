@@ -21,7 +21,6 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 import assistant
-from telegram.error import Conflict
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 API_URL = os.getenv("API_URL", "https://short-video-knowledge-base.onrender.com")
@@ -436,6 +435,12 @@ def run_bot():
         print("[bot] TELEGRAM_BOT_TOKEN not set, exiting")
         sys.exit(1)
 
+    import time as _time
+    import random
+    delay = random.uniform(5, 15)
+    print(f"[bot] Waiting {delay:.1f}s before starting (avoid instance collision)...")
+    _time.sleep(delay)
+
     print(f"[bot] Starting standalone bot... (API: {API_URL})")
     assistant.sync_from_github()
 
@@ -487,14 +492,10 @@ async def _post_shutdown(application):
 
 
 async def _error_handler(update, context):
-    """Handle telegram errors — stop on Conflict so the retry loop can restart."""
+    """Log unhandled telegram errors."""
     error = context.error
     if isinstance(error, Conflict):
-        print("[bot] Conflict: another instance running, stopping to retry...")
-        try:
-            await context.application.stop()
-        except Exception:
-            pass
+        print("[bot] Conflict (will auto-recover)...")
         return
     print(f"[bot] Unhandled error: {error}")
 
@@ -519,20 +520,18 @@ def run_with_health_server():
     server_thread.start()
     print(f"[bot] Health server on port {PORT}")
 
-    max_retries = 5
+    max_retries = 3
     for attempt in range(max_retries):
         try:
             run_bot()
             break
         except Exception as e:
-            err_str = str(e)
-            if ("Conflict" in err_str or "Conflict" in type(e).__name__) and attempt < max_retries - 1:
-                wait = 10 * (attempt + 1)
-                print(f"[bot] Conflict (instance overlap), retrying in {wait}s... ({attempt+1}/{max_retries})")
+            print(f"[bot] Bot crashed: {e}, retrying ({attempt+1}/{max_retries})...")
+            if attempt < max_retries - 1:
                 import time as _time
-                _time.sleep(wait)
+                _time.sleep(10)
                 continue
-            print(f"[bot] Bot crashed: {e}, health server still running")
+            print(f"[bot] All retries exhausted, health server still running")
 
 
 if __name__ == "__main__":
