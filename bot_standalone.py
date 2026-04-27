@@ -54,7 +54,7 @@ def _m(key, **kw):
 
 # --- AI analysis via GLM ---
 
-async def _analyze_note(text):
+async def _analyze_note(text, max_retries=2):
     prompt = (
         "You are a personal AI assistant. Analyze the following user note."
         + NL
@@ -65,27 +65,37 @@ async def _analyze_note(text):
         + NL
         + text
     )
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                CLASSIFIER_BASE_URL + "chat/completions",
-                headers={
-                    "Authorization": "Bearer " + CLASSIFIER_API_KEY,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": CLASSIFIER_MODEL,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.7,
-                    "response_format": {"type": "json_object"},
-                },
-            )
-            resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"]["content"]
-            return json.loads(content)
-    except Exception as e:
-        print(f"  [bot] AI analysis error: {e}")
-        return {"category": "Other", "tags": [], "analysis": ""}
+    last_err = ""
+    for attempt in range(max_retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    CLASSIFIER_BASE_URL + "chat/completions",
+                    headers={
+                        "Authorization": "Bearer " + CLASSIFIER_API_KEY,
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": CLASSIFIER_MODEL,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.7,
+                        "response_format": {"type": "json_object"},
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                return json.loads(content)
+        except httpx.HTTPStatusError as e:
+            last_err = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+        except (json.JSONDecodeError, KeyError) as e:
+            last_err = f"Bad response: {type(e).__name__}: {e}"
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {e}"
+        if attempt < max_retries:
+            await asyncio.sleep(3 * (attempt + 1))
+    print(f"  [bot] AI analysis failed after {max_retries+1} attempts: {last_err}")
+    return {"category": "Other", "tags": [], "analysis": ""}
 
 
 async def _continue_discussion(text, note_content, history):
@@ -448,6 +458,9 @@ def run_bot():
         print(f"[bot] Polling error: {e}")
 
 
+_sync_task = None
+
+
 async def _periodic_sync():
     while True:
         await asyncio.sleep(600)
@@ -459,11 +472,18 @@ async def _periodic_sync():
 
 
 async def _post_init(application):
-    application.create_task(_periodic_sync())
+    global _sync_task
+    _sync_task = application.create_task(_periodic_sync())
 
 
 async def _post_shutdown(application):
-    pass
+    global _sync_task
+    if _sync_task and not _sync_task.done():
+        _sync_task.cancel()
+        try:
+            await _sync_task
+        except asyncio.CancelledError:
+            pass
 
 
 async def _error_handler(update, context):
