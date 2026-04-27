@@ -453,7 +453,7 @@ def run_bot():
     app.post_init = _post_init
     app.post_shutdown = _post_shutdown
     try:
-        app.run_polling(drop_pending_updates=True)
+        app.run_polling(drop_pending_updates=False)
     except Exception as e:
         print(f"[bot] Polling error: {e}")
 
