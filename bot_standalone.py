@@ -437,7 +437,19 @@ def run_bot():
     app.add_handler(CommandHandler("note_help", cmd_note_help))
     app.add_handler(CommandHandler("delete", cmd_delete))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    job_queue = app.job_queue
+    job_queue.run_repeating(_periodic_sync, interval=600, first=10)
+
     app.run_polling(drop_pending_updates=True)
+
+
+async def _periodic_sync(context):
+    print("  [bot] Periodic sync to GitHub...")
+    try:
+        await asyncio.to_thread(assistant.sync_all)
+    except Exception as e:
+        print(f"  [bot] Periodic sync error: {e}")
 
 
 def run_with_health_server():

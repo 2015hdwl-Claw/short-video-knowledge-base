@@ -178,6 +178,21 @@ def sync_from_github():
     return pulled
 
 
+def sync_all():
+    """Push all local notes.json + raw/notes/*.md to GitHub in one batch.
+    Call this on startup and periodically (not on every note write).
+    """
+    notes = _load_notes_json()
+    if notes:
+        _sync_notes_json_to_github(notes)
+    if os.path.exists(RAW_NOTES_DIR):
+        for fpath in sorted(RAW_NOTES_DIR.glob("*.md")):
+            rel_path = "raw/notes/" + fpath.name
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            _push_md_to_github(rel_path, content)
+
+
 # --- Public API ---
 
 def add_note(content, chat_id, ai_analysis=None, category="", tags=None):
@@ -227,9 +242,9 @@ def add_note(content, chat_id, ai_analysis=None, category="", tags=None):
     }
     notes.append(entry)
     _save_notes_json(notes)
+    print(f"  [assistant] Note #{entry['id']} saved locally")
 
-    _push_md_to_github(rel_path, md_content)
-    _sync_notes_json_to_github(notes)
+    # Don't push immediately — batch sync to avoid deploy loop
 
     entry["id"] = len(notes)
     return entry
@@ -254,7 +269,6 @@ def delete_note(note_id):
         return False
     removed = notes.pop(note_id - 1)
     _save_notes_json(notes)
-    _sync_notes_json_to_github(notes)
     rel_path = removed.get("file", "")
     if rel_path:
         try:
@@ -293,7 +307,6 @@ def append_discussion(note_id, user_text, ai_reply):
     )
     note["ai_analysis"] = discussion
     _save_notes_json(notes)
-    _sync_notes_json_to_github(notes)
 
     rel_path = note.get("file", "")
     if rel_path:
@@ -301,7 +314,4 @@ def append_discussion(note_id, user_text, ai_reply):
         if os.path.exists(local_path):
             with open(local_path, "a", encoding="utf-8") as f:
                 f.write("\n\n---\n\n**Q:** " + user_text + "\n\n**A:** " + ai_reply)
-            with open(local_path, "r", encoding="utf-8") as f:
-                md_content = f.read()
-            _push_md_to_github(rel_path, md_content)
     return True
