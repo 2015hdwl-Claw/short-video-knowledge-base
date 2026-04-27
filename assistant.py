@@ -254,9 +254,9 @@ def add_note(content, chat_id, ai_analysis=None, category="", tags=None):
     _save_notes_json(notes)
     global _dirty
     _dirty = True
-    print(f"  [assistant] Note #{entry['id']} saved locally")
 
     entry["id"] = len(notes)
+    print(f"  [assistant] Note #{entry['id']} saved locally")
     return entry
 
 
