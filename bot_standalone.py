@@ -295,6 +295,10 @@ async def handle_video(update, context, url):
             "timeout",
             "Processing timeout (90s), API server may be waking up. Try again later.",
         ))
+    except httpx.HTTPStatusError as e:
+        await update.message.reply_text(
+            "API server is waking up or restarting. Please try again in a minute."
+        )
     except Exception as e:
         await update.message.reply_text(_m("process_fail", e=e))
 
