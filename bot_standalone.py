@@ -354,7 +354,21 @@ async def handle_message(update, context):
     if update.message.reply_to_message:
         reply_msg = update.message.reply_to_message
         if reply_msg.from_user and reply_msg.from_user.is_bot:
-            if update.message.chat_id in _conversation_state:
+            chat_id = update.message.chat_id
+            if chat_id not in _conversation_state:
+                notes = assistant.list_notes(limit=1)
+                if notes and notes[0].get("source") == "telegram":
+                    _conversation_state[chat_id] = {
+                        "note_id": notes[0].get("id", 0),
+                        "note_content": notes[0].get("content", ""),
+                        "history": [],
+                    }
+                    ai = notes[0].get("ai_analysis", "")
+                    if ai:
+                        _conversation_state[chat_id]["history"].append(
+                            {"role": "assistant", "text": ai}
+                        )
+            if chat_id in _conversation_state:
                 await handle_discussion(update, context)
                 return
 
