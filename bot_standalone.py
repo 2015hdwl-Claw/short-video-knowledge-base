@@ -340,6 +340,8 @@ async def handle_discussion(update, context):
         ai_reply = ai_reply[: max_len - 20] + NL + "...(truncated)"
     await update.message.reply_text(ai_reply)
 
+    assistant.append_discussion(state["note_id"], text, ai_reply)
+
 
 async def handle_message(update, context):
     text = update.message.text or ""

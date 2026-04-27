@@ -279,3 +279,29 @@ def get_note(note_id):
     n = notes[note_id - 1]
     n["id"] = note_id
     return n
+
+
+def append_discussion(note_id, user_text, ai_reply):
+    notes = _load_notes_json()
+    if note_id < 1 or note_id > len(notes):
+        return False
+    note = notes[note_id - 1]
+    existing = note.get("ai_analysis", "")
+    discussion = (
+        existing
+        + "\n\n---\n\n**Q:** " + user_text + "\n\n**A:** " + ai_reply
+    )
+    note["ai_analysis"] = discussion
+    _save_notes_json(notes)
+    _sync_notes_json_to_github(notes)
+
+    rel_path = note.get("file", "")
+    if rel_path:
+        local_path = os.path.join(REPO_DIR, rel_path)
+        if os.path.exists(local_path):
+            with open(local_path, "a", encoding="utf-8") as f:
+                f.write("\n\n---\n\n**Q:** " + user_text + "\n\n**A:** " + ai_reply)
+            with open(local_path, "r", encoding="utf-8") as f:
+                md_content = f.read()
+            _push_md_to_github(rel_path, md_content)
+    return True
