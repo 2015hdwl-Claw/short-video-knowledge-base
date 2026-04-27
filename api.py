@@ -103,7 +103,13 @@ async def health():
 @app.post("/api/process")
 async def api_process(req: ProcessRequest):
     cookie = req.cookie or os.getenv("DOUYIN_COOKIE", "")
-    result = await process_url(req.url, cookie=cookie, dry_run=req.dry_run)
+    try:
+        result = await asyncio.wait_for(
+            asyncio.to_thread(process_url, req.url, cookie=cookie, dry_run=req.dry_run),
+            timeout=TIMEOUT_WIKI_REBUILD,
+        )
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Processing timed out")
     if not result.success and result.error:
         return {"success": False, "error": result.error}
     return {
