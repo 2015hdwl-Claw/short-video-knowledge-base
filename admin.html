@@ -405,7 +405,13 @@ function getConceptsForVideo(idx) {
 fetch("https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/contents/short-videos.json")
     .then(r=>r.json())
     .then(d=>{
-        const content = atob(d.content);
+        // Fix UTF-8 encoding: decode base64 to bytes, then decode to UTF-8 string
+        const binaryString = atob(d.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const content = new TextDecoder().decode(bytes);
         DATA = JSON.parse(content);
         DATA = Array.isArray(DATA) ? DATA : (DATA.videos || []);
 
@@ -877,7 +883,13 @@ async function loadKWiki() {
         const res = await fetch(WIKI_BASE + 'index.md');
         if (!res.ok) throw new Error('404');
         const data = await res.json();
-        const md = atob(data.content);
+        // Fix UTF-8 encoding for Chinese characters
+        const binaryString = atob(data.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const md = new TextDecoder('utf-8').decode(bytes);
         window._wikiIndexMd = md;
         renderKWikiIndex(md);
     } catch(e) {
@@ -1014,7 +1026,13 @@ async function loadConceptPage(file) {
         const res = await fetch(apiPath);
         if (!res.ok) throw new Error('404');
         const data = await res.json();
-        const md = atob(data.content);
+        // Fix UTF-8 encoding for Chinese characters
+        const binaryString = atob(data.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const md = new TextDecoder('utf-8').decode(bytes);
         let html = '<button onclick="document.getElementById(\'kwikiDetail\').style.display=\'none\';document.getElementById(\'kwikiContent\').style.display=\'block\';" style="margin-bottom:1rem;padding:.4rem 1rem;border:1px solid var(--bd);background:var(--bg2);color:var(--tm);border-radius:.375rem;cursor:pointer;">← 返回索引</button>';
         html += renderMd(md);
         detail.innerHTML = html;
