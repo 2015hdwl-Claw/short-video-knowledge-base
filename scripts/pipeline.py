@@ -653,6 +653,7 @@ def _save_video(meta, summary):
         "tags": meta.get("tags", []),
         "url": meta.get("url", ""),
         "date": "",
+        "added_date": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         "advice": "",
         "audience": "",
         "note": meta.get("desc_full", "")[:200] if meta.get("desc_full") else "",

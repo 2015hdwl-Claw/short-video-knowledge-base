@@ -208,7 +208,7 @@ loadTheme();
         <div class="controls">
             <input type="text" id="search" placeholder="🔍 搜尋標題、作者、內容..." style="flex:1;min-width:200px">
             <select id="catFilter"><option value="">所有分類</option></select>
-            <select id="sortOrder"><option value="date-desc">最新優先</option><option value="date-asc">最舊優先</option><option value="title">標題排序</option></select>
+            <select id="sortOrder"><option value="added-desc">依寫入時間（新→舊）</option><option value="added-asc">依寫入時間（舊→新）</option><option value="date-desc">依原發布時間（新→舊）</option><option value="date-asc">依原發布時間（舊→新）</option><option value="title">按標題排序</option></select>
             <label class="select-all-wrap"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)">全選</label>
         </div>
         <div class="batch-bar" id="batchBar">
@@ -327,6 +327,19 @@ function switchTab(tab) {
 // === ESCAPE ===
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+// === DATE FORMAT HELPERS ===
+function formatAddedDate(isoStr) {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diff = now - d;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) return '今天';
+    if (days === 1) return '昨天';
+    if (days < 7) return `${days} 天前`;
+    return d.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' });
+}
+
 // === BUILD CONCEPT MAP ===
 function buildConceptMap() {
     conceptMap = {};
@@ -389,8 +402,16 @@ function getConceptsForVideo(idx) {
 }
 
 // === LOAD DATA ===
-fetch("short-videos.json").then(r=>r.json()).then(d=>{
+fetch("short-videos.json").then(r=>r().then(d=>{
     DATA = Array.isArray(d) ? d : (d.videos || []);
+
+    // Backward compatibility: add added_date for old entries
+    DATA.forEach(v => {
+        if (!v.added_date) {
+            v.added_date = v.date ? v.date + 'T00:00:00Z' : '';
+        }
+    });
+
     document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | ⚠ ${DATA.filter(d=>!d.url).length} 缺URL | 🧠 ${wikiPages.length || '?'} 概念`;
     render();
 });
@@ -419,9 +440,25 @@ function render() {
         if (q && !d.title.toLowerCase().includes(q) && !d.source.toLowerCase().includes(q) && !(d.core_points||'').toLowerCase().includes(q)) return false;
         return true;
     });
-    if (sort === 'date-desc') filtered.sort((a,b) => b.date.localeCompare(a.date));
-    else if (sort === 'date-asc') filtered.sort((a,b) => a.date.localeCompare(b.date));
-    else if (sort === 'title') filtered.sort((a,b) => a.title.localeCompare(b.title));
+    if (sort === 'added-desc') {
+        filtered.sort((a,b) => {
+            const da = a.added_date ? new Date(a.added_date) : new Date(0);
+            const db = b.added_date ? new Date(b.added_date) : new Date(0);
+            return db - da;
+        });
+    } else if (sort === 'added-asc') {
+        filtered.sort((a,b) => {
+            const da = a.added_date ? new Date(a.added_date) : new Date(0);
+            const db = b.added_date ? new Date(b.added_date) : new Date(0);
+            return da - db;
+        });
+    } else if (sort === 'date-desc') {
+        filtered.sort((a,b) => b.date.localeCompare(a.date));
+    } else if (sort === 'date-asc') {
+        filtered.sort((a,b) => a.date.localeCompare(b.date));
+    } else if (sort === 'title') {
+        filtered.sort((a,b) => a.title.localeCompare(b.title));
+    }
     const grid = document.getElementById('grid');
     if (!filtered.length) { grid.innerHTML = '<div class="empty">沒有找到匹配的卡片</div>'; return; }
     grid.innerHTML = filtered.map(d => {
@@ -435,13 +472,14 @@ function render() {
             `<span class="badge badge-concept" onclick="event.stopPropagation();goToConcept('${esc(c)}')">🧠 ${esc(c)}</span>`
         ).join('') + '</div>' : '';
         const isChecked = selectedIds.has(idx);
+        const addedBadge = d.added_date ? `<span class="badge badge-concept" title="寫入時間">✨ ${formatAddedDate(d.added_date)}</span>` : '';
         return `<div class="card${isChecked ? ' checked' : ''}" onclick="openModal(${idx})">
             <input type="checkbox" class="card-check" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation();toggleSelect(${idx},this)" title="選取">
             <div class="title">${esc(d.title)}</div>
             <div class="meta">
                 <span class="badge badge-source">${esc(d.source)}</span>
                 <span class="badge badge-cat">${esc(d.category)}</span>
-                <span class="badge badge-date">${d.date}</span>${!d.url ? ' <span class="badge badge-no-url" title="缺原網址">⚠ 缺URL</span>' : ''}
+                ${d.date ? `<span class="badge badge-date" title="原發布日期">📅 ${d.date}</span>` : ''}${addedBadge}${!d.url ? ' <span class="badge badge-no-url" title="缺原網址">⚠ 缺URL</span>' : ''}
                 <span class="edit-icon" onclick="event.stopPropagation();openEdit('video',${idx})" title="編輯">✏️</span>
             </div>
             ${ptsHtml}${conceptBadges}${noteHtml}
@@ -453,6 +491,7 @@ function openModal(idx) {
     const d = DATA[idx];
     const points = (d.core_points || '').split('\n').filter(p => p.trim());
     const concepts = getConceptsForVideo(idx);
+    const addedBadge = d.added_date ? `<span class="badge badge-concept" style="background:#3b82f6;color:white;">✨ 寫入 ${formatAddedDate(d.added_date)}</span>` : '';
     const conceptLinks = concepts.length ? '<div style="margin-top:1rem;"><span style="color:#64748b;font-size:0.85rem;">相關概念:</span>' +
         concepts.map(c => `<span class="badge badge-concept" onclick="document.getElementById('modal').classList.remove('active');goToConcept('${esc(c)}')" style="margin-right:0.3rem;cursor:pointer;">🧠 ${esc(c)}</span>`).join('') + '</div>' : '';
     document.getElementById('modalBody').innerHTML = `
@@ -461,7 +500,7 @@ function openModal(idx) {
             <div class="meta">
                 <span class="badge badge-source">${esc(d.source)}</span>
                 <span class="badge badge-cat">${esc(d.category)}</span>
-                <span class="badge badge-date">${d.date}</span>
+                ${d.date ? `<span class="badge badge-date" title="原發布日期">📅 ${d.date}</span>` : ''}${addedBadge}
             </div>
             <span class="edit-icon" onclick="document.getElementById('modal').classList.remove('active');openEdit('video',${idx})" title="編輯" style="font-size:1rem;">✏️ 編輯</span>
         </div>
@@ -581,7 +620,8 @@ function openEdit(type, index, file) {
             + makeField('實踐建議', 'ed_advice', d.advice || '', 'textarea')
             + makeField('適合對象', 'ed_audience', d.audience || '')
             + makeField('備註', 'ed_note', d.note || '', 'textarea')
-            + makeField('個人觀點', 'ed_insight', d.personal_insight || '', 'textarea');
+            + makeField('個人觀點', 'ed_insight', d.personal_insight || '', 'textarea')
+            + makeField('寫入日期', 'ed_added_date', d.added_date || '');
     }
     document.getElementById('editOverlay').classList.add('active');
 }
@@ -745,6 +785,7 @@ async function saveEdit() {
             videos[idx].audience = getVal('ed_audience');
             videos[idx].note = getVal('ed_note');
             videos[idx].personal_insight = getVal('ed_insight');
+            videos[idx].added_date = getVal('ed_added_date') || videos[idx].added_date;
             const newJson = JSON.stringify({ videos }, null, 2);
             await ghPut('short-videos.json', { message: '✏️ 編輯知識卡片', content: btoa(unescape(encodeURIComponent(newJson))), sha: remote.sha });
             Object.assign(DATA[idx], videos[idx]);
