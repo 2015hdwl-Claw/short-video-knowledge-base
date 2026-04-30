@@ -296,7 +296,7 @@ let wikiLoaded = false;
 let wikiPages = [];
 let notesLoaded = false;
 let allNotes = [];
-const WIKI_BASE = 'https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/wiki/';
+const WIKI_BASE = 'https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/contents/wiki/';
 const CONCEPT_FILE_MAP = {
     'AI工具與編程': 'ai-coding-tools',
     'AI趨勢與產業': 'ai-trends',
@@ -402,19 +402,23 @@ function getConceptsForVideo(idx) {
 }
 
 // === LOAD DATA ===
-fetch("short-videos.json").then(r=>r().then(d=>{
-    DATA = Array.isArray(d) ? d : (d.videos || []);
+fetch("https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/contents/short-videos.json")
+    .then(r=>r.json())
+    .then(d=>{
+        const content = atob(d.content);
+        DATA = JSON.parse(content);
+        DATA = Array.isArray(DATA) ? DATA : (DATA.videos || []);
 
-    // Backward compatibility: add added_date for old entries
-    DATA.forEach(v => {
-        if (!v.added_date) {
-            v.added_date = v.date ? v.date + 'T00:00:00Z' : '';
-        }
+        // Backward compatibility: add added_date for old entries
+        DATA.forEach(v => {
+            if (!v.added_date) {
+                v.added_date = v.date ? v.date + 'T00:00:00Z' : '';
+            }
+        });
+
+        document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | ⚠ ${DATA.filter(d=>!d.url).length} 缺URL | 🧠 ${wikiPages.length || '?'} 概念`;
+        render();
     });
-
-    document.getElementById('stats').textContent = `📹 ${DATA.length} 筆短影音 | ⚠ ${DATA.filter(d=>!d.url).length} 缺URL | 🧠 ${wikiPages.length || '?'} 概念`;
-    render();
-});
 
 // === VIDEOS TAB ===
 const categories = [];
@@ -872,7 +876,8 @@ async function loadKWiki() {
     try {
         const res = await fetch(WIKI_BASE + 'index.md');
         if (!res.ok) throw new Error('404');
-        const md = await res.text();
+        const data = await res.json();
+        const md = atob(data.content);
         window._wikiIndexMd = md;
         renderKWikiIndex(md);
     } catch(e) {
@@ -1003,8 +1008,13 @@ async function loadConceptPage(file) {
     detail.style.display = 'block';
     detail.innerHTML = '<p style="color:var(--tm)">載入中...</p>';
     try {
-        const res = await fetch(file);
-        const md = await res.text();
+        // Convert old raw URL to API URL
+        const apiPath = file.replace('https://raw.githubusercontent.com/2015hdwl-Claw/short-video-knowledge-base/main/wiki/',
+                                   'https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/contents/wiki/');
+        const res = await fetch(apiPath);
+        if (!res.ok) throw new Error('404');
+        const data = await res.json();
+        const md = atob(data.content);
         let html = '<button onclick="document.getElementById(\'kwikiDetail\').style.display=\'none\';document.getElementById(\'kwikiContent\').style.display=\'block\';" style="margin-bottom:1rem;padding:.4rem 1rem;border:1px solid var(--bd);background:var(--bg2);color:var(--tm);border-radius:.375rem;cursor:pointer;">← 返回索引</button>';
         html += renderMd(md);
         detail.innerHTML = html;
