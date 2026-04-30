@@ -330,26 +330,33 @@ def _fetch_subtitles(url):
     return ""
 
 
-def _download_audio(video_url, max_size_mb=25):
-    """Download video audio from Douyin API URL.
+def _download_audio(share_link, max_size_mb=25):
+    """Download video audio using douyinsx (no cookie needed).
 
-    Uses the video_url from Douyin API (aBogus signed).
+    Uses douyinsx.get_douyin_download_link() to get watermark-free URL.
     Returns temp file path or None on failure.
     """
     import tempfile
     import httpx
 
-    if not video_url:
+    if not share_link:
         return None
 
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
         audio_path = Path(tmp.name)
 
     try:
+        from douyinsx.server import get_douyin_download_link
+
+        print("  Getting download link via douyinsx...")
+        dl_url = get_douyin_download_link(share_link)
+        if not dl_url:
+            print("  Failed to get download link", file=sys.stderr)
+            return None
+
         with httpx.Client(timeout=120, follow_redirects=True, verify=False) as client:
-            resp = client.get(video_url, headers={
+            resp = client.get(dl_url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Referer": "https://www.douyin.com/",
             })
             resp.raise_for_status()
             audio_path.write_bytes(resp.content)
@@ -370,6 +377,7 @@ def _download_audio(video_url, max_size_mb=25):
         print("  Audio download failed: " + str(e), file=sys.stderr)
         audio_path.unlink(missing_ok=True)
         return None
+
 
 
 def _transcribe_groq(audio_path, duration_ms=0):
@@ -605,7 +613,7 @@ def _fill_content(meta):
         # Priority 1: Groq Whisper API (skip yt-dlp and keyframes to save memory)
         if video_url:
             print("  [1] Downloading audio for Groq Whisper...")
-            audio_path = _download_audio(video_url)
+            audio_path = _download_audio(url)
             if audio_path:
                 content = _transcribe_groq(audio_path, duration)
                 if content:
