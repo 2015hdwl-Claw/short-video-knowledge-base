@@ -604,10 +604,15 @@ def _fill_content(meta):
     source = ""
 
     # If we already have a good description from metadata, use it directly
-    if desc and len(desc) > 50:
+    # Skip truncated descriptions (Douyin App shares truncated text like "版本过低，升级后可展示全部信息")
+    _TRUNCATION_SIGNALS = ["版本过低", "升级后可展示", "查看全部", "...展开"]
+    _is_truncated = any(s in desc for s in _TRUNCATION_SIGNALS) if desc else False
+    if desc and len(desc) > 50 and not _is_truncated:
         print("  Using metadata description (skip download)")
         source = "metadata"
         content = desc
+    elif _is_truncated:
+        print("  Metadata description appears truncated, falling through to audio transcription")
 
     if not content and url:
         # Priority 1: Groq Whisper API (skip yt-dlp and keyframes to save memory)
