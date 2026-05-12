@@ -330,30 +330,52 @@ def _fetch_subtitles(url):
     return ""
 
 
+def _get_douyinsx_info(share_link):
+    """Get video info from douyinsx (download URL + description).
+
+    Returns (download_url, description) tuple.
+    """
+    if not share_link:
+        return "", ""
+
+    try:
+        from douyinsx.server import get_douyin_download_link
+        print("  Getting video info via douyinsx...")
+        dl_result = get_douyin_download_link(share_link)
+        if not dl_result:
+            return "", ""
+        # douyinsx may return JSON (newer versions) or plain URL
+        try:
+            parsed = json.loads(dl_result)
+            return parsed.get("download_url", ""), parsed.get("description", "")
+        except (json.JSONDecodeError, TypeError):
+            return dl_result.strip(), ""
+    except Exception as e:
+        print("  douyinsx info failed: " + str(e), file=sys.stderr)
+        return "", ""
+
+
 def _download_audio(share_link, max_size_mb=25):
     """Download video audio using douyinsx (no cookie needed).
 
     Uses douyinsx.get_douyin_download_link() to get watermark-free URL.
-    Returns temp file path or None on failure.
+    Returns (temp file path, douyinsx_description) or (None, description) on failure.
     """
     import tempfile
     import httpx
 
     if not share_link:
-        return None
+        return None, ""
+
+    dl_url, dl_desc = _get_douyinsx_info(share_link)
+    if not dl_url:
+        print("  Failed to get download link", file=sys.stderr)
+        return None, dl_desc
 
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
         audio_path = Path(tmp.name)
 
     try:
-        from douyinsx.server import get_douyin_download_link
-
-        print("  Getting download link via douyinsx...")
-        dl_url = get_douyin_download_link(share_link)
-        if not dl_url:
-            print("  Failed to get download link", file=sys.stderr)
-            return None
-
         with httpx.Client(timeout=120, follow_redirects=True, verify=False) as client:
             resp = client.get(dl_url, headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -365,18 +387,18 @@ def _download_audio(share_link, max_size_mb=25):
         if size_mb < 0.001:
             print("  Audio download failed or empty", file=sys.stderr)
             audio_path.unlink(missing_ok=True)
-            return None
+            return None, dl_desc
         if size_mb > max_size_mb:
             print(f"  Audio too large ({size_mb:.1f}MB > {max_size_mb}MB), skipping Groq", file=sys.stderr)
             audio_path.unlink(missing_ok=True)
-            return None
+            return None, dl_desc
 
         print(f"  Audio downloaded: {size_mb:.1f}MB")
-        return audio_path
+        return audio_path, dl_desc
     except Exception as e:
         print("  Audio download failed: " + str(e), file=sys.stderr)
         audio_path.unlink(missing_ok=True)
-        return None
+        return None, dl_desc
 
 
 
@@ -618,8 +640,19 @@ def _fill_content(meta):
         # Priority 1: Groq Whisper API (skip yt-dlp and keyframes to save memory)
         if video_url:
             print("  [1] Downloading audio for Groq Whisper...")
-            audio_path = _download_audio(url)
-            if audio_path:
+            audio_path, douyinsx_desc = _download_audio(url)
+            # Use full description from douyinsx if it's better than metadata
+            if douyinsx_desc and len(douyinsx_desc) > len(desc) and not any(s in douyinsx_desc for s in _TRUNCATION_SIGNALS):
+                print(f"  Using douyinsx description ({len(douyinsx_desc)} chars) instead of metadata")
+                # Strip "视频标题:" prefix from douyinsx description
+                if douyinsx_desc.startswith("视频标题:"):
+                    douyinsx_desc = douyinsx_desc[len("视频标题:"):].strip()
+                desc = douyinsx_desc
+                meta["desc_full"] = desc
+                if len(desc) > 50:
+                    content = desc
+                    source = "douyinsx_metadata"
+            if not content and audio_path:
                 content = _transcribe_groq(audio_path, duration)
                 if content:
                     source = "groq_whisper"
