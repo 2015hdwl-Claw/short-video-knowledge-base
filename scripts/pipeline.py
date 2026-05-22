@@ -339,7 +339,7 @@ def _get_douyinsx_info(share_link):
         return "", ""
 
     try:
-        from douyinsx.server import get_douyin_download_link
+        from douyinsx import get_douyin_download_link
         print("  Getting video info via douyinsx...")
         dl_result = get_douyin_download_link(share_link)
         if not dl_result:
