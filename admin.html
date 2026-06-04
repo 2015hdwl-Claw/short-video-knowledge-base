@@ -408,10 +408,11 @@ fetch("https://api.github.com/repos/2015hdwl-Claw/short-video-knowledge-base/con
         DATA = JSON.parse(content);
         DATA = Array.isArray(DATA) ? DATA : (DATA.videos || []);
 
-        // Backward compatibility: add added_date for old entries
+        // Backward compatibility: mark entries without real added_date
         DATA.forEach(v => {
             if (!v.added_date) {
                 v.added_date = v.date ? v.date + 'T00:00:00Z' : '';
+                v._added_date_fake = true;
             }
         });
 
@@ -445,12 +446,18 @@ function render() {
     });
     if (sort === 'added-desc') {
         filtered.sort((a,b) => {
+            const aFake = a._added_date_fake;
+            const bFake = b._added_date_fake;
+            if (aFake !== bFake) return aFake ? 1 : -1;
             const da = a.added_date ? new Date(a.added_date) : new Date(0);
             const db = b.added_date ? new Date(b.added_date) : new Date(0);
             return db - da;
         });
     } else if (sort === 'added-asc') {
         filtered.sort((a,b) => {
+            const aFake = a._added_date_fake;
+            const bFake = b._added_date_fake;
+            if (aFake !== bFake) return aFake ? 1 : -1;
             const da = a.added_date ? new Date(a.added_date) : new Date(0);
             const db = b.added_date ? new Date(b.added_date) : new Date(0);
             return da - db;
@@ -475,7 +482,7 @@ function render() {
             `<span class="badge badge-concept" onclick="event.stopPropagation();goToConcept('${esc(c)}')">🧠 ${esc(c)}</span>`
         ).join('') + '</div>' : '';
         const isChecked = selectedIds.has(idx);
-        const addedBadge = d.added_date ? `<span class="badge badge-concept" title="寫入時間">✨ ${formatAddedDate(d.added_date)}</span>` : '';
+        const addedBadge = d.added_date ? `<span class="badge badge-concept" title="${d._added_date_fake ? '無寫入日期，顯示原發布日期' : '寫入時間'}">✨ ${formatAddedDate(d.added_date)}${d._added_date_fake ? ' ⚠' : ''}</span>` : '';
         return `<div class="card${isChecked ? ' checked' : ''}" onclick="openModal(${idx})">
             <input type="checkbox" class="card-check" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation();toggleSelect(${idx},this)" title="選取">
             <div class="title">${esc(d.title)}</div>
@@ -494,7 +501,7 @@ function openModal(idx) {
     const d = DATA[idx];
     const points = (d.core_points || '').split('\n').filter(p => p.trim());
     const concepts = getConceptsForVideo(idx);
-    const addedBadge = d.added_date ? `<span class="badge badge-concept" style="background:#3b82f6;color:white;">✨ 寫入 ${formatAddedDate(d.added_date)}</span>` : '';
+    const addedBadge = d.added_date ? `<span class="badge badge-concept" style="background:#3b82f6;color:white;" title="${d._added_date_fake ? '無寫入日期，顯示原發布日期' : '寫入時間'}">✨ ${d._added_date_fake ? '發布' : '寫入'} ${formatAddedDate(d.added_date)}</span>` : '';
     const conceptLinks = concepts.length ? '<div style="margin-top:1rem;"><span style="color:#64748b;font-size:0.85rem;">相關概念:</span>' +
         concepts.map(c => `<span class="badge badge-concept" onclick="document.getElementById('modal').classList.remove('active');goToConcept('${esc(c)}')" style="margin-right:0.3rem;cursor:pointer;">🧠 ${esc(c)}</span>`).join('') + '</div>' : '';
     document.getElementById('modalBody').innerHTML = `
