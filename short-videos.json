@@ -672,7 +672,7 @@
       "title": "Claude Code 團隊內部的 10 個內部技巧",
       "date": "2026-03-30",
       "source": "抖音",
-      "url": "",
+      "url": "https://v.douyin.com/g0x8QbHE6yM/",
       "url_status": "",
       "tags": [
         "AI",
@@ -682,7 +682,11 @@
       "category": "AI",
       "core_points": "1. **同時跑 3-5 個 Claude Code 會話** — 用 Gatebox 隔離上下文，各自跑不同任務（A 組實現、B 組寫測試、C 組做重構），像管理 AI 團隊而非單人寫碼\n2. **用 Claude Code 做重寫，不只是開始** — 團隊用 Shell 腳本封裝高频操作，如自動清理重複代碼、整合最近 7 天的 Stack Overflow、Google Drive、3 個任務",
       "note": "",
-      "priority": "normal"
+      "priority": "normal",
+      "advice": "",
+      "audience": "",
+      "personal_insight": "",
+      "added_date": "2026-03-30T00:00:00Z"
     },
     {
       "file": "../raw/videos/Cloudflare叛变了上线API一键爬虫 转成Agent_20260312_230826.md",
